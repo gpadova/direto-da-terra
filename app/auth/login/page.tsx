@@ -1,8 +1,8 @@
 "use client";
 
 import type React from "react";
-
-import { createClient } from "@/lib/supabase/client";
+import { useAuthActions } from "@convex-dev/auth/react";
+import { useConvexAuth } from "convex/react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,48 +15,45 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [signInComplete, setSignInComplete] = useState(false);
   const router = useRouter();
+  const { signIn } = useAuthActions();
+  const { isAuthenticated } = useConvexAuth();
+
+  // Redirect once auth state propagates after signIn
+  useEffect(() => {
+    if (signInComplete && isAuthenticated) {
+      router.push("/dashboard");
+    }
+  }, [signInComplete, isAuthenticated, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    const supabase = createClient();
     setIsLoading(true);
     setError(null);
 
-    console.log("Attempting login with email:", email);
-
     try {
-      const { error, data } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const result = await signIn("password", { email, password, flow: "signIn" });
+      console.log("signIn result:", result);
+      setSignInComplete(true);
+    } catch (err: unknown) {
+      console.error("Login error:", err);
 
-      console.log("Supabase response:", { error, data });
-
-      if (error) {
-        console.error("Login error:", error);
-        throw error;
+      let message = "Email ou senha inválidos";
+      if (err instanceof Error) {
+        message = err.message;
+      } else if (typeof err === "object" && err !== null) {
+        message = JSON.stringify(err);
       }
 
-      if (data?.user) {
-        console.log("Login successful, redirecting to dashboard");
-        router.push("/dashboard");
-      } else {
-        console.warn("No user data returned");
-        setError("Login failed - no user data returned");
-      }
-    } catch (error: unknown) {
-      console.error("Caught error:", error);
-      setError(error instanceof Error ? error.message : "An error occurred");
-    } finally {
+      setError(message);
       setIsLoading(false);
     }
   };
@@ -65,9 +62,11 @@ export default function LoginPage() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-primary mb-2">
-            Direto da Terra
-          </h1>
+          <Link href="/" className="inline-block">
+            <h1 className="text-3xl font-bold text-primary mb-2 hover:opacity-80 transition-opacity">
+              Direto da Terra
+            </h1>
+          </Link>
           <p className="text-muted-foreground">
             Reduzindo o desperdício alimentar, uma refeição de cada vez
           </p>
@@ -104,6 +103,11 @@ export default function LoginPage() {
               {error && (
                 <div className="p-3 text-sm text-destructive-foreground bg-destructive/10 border border-destructive/20 rounded-md">
                   {error}
+                </div>
+              )}
+              {signInComplete && !isAuthenticated && (
+                <div className="p-3 text-sm text-muted-foreground bg-muted rounded-md text-center">
+                  A autenticar...
                 </div>
               )}
               <Button type="submit" className="w-full" disabled={isLoading}>

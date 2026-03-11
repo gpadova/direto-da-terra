@@ -1,43 +1,48 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+"use client";
+
+import { useConvexAuth, useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { ProductForm } from "@/components/products/product-form";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowLeft, Leaf } from "lucide-react";
 import { UserNav } from "@/components/auth/user-nav";
 
-export default async function NewProductPage() {
-  const supabase = await createClient();
+export default function NewProductPage() {
+  const { isAuthenticated, isLoading } = useConvexAuth();
+  const profile = useQuery(api.profiles.currentProfile);
+  const categories = useQuery(api.categories.list);
+  const router = useRouter();
 
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push("/auth/login");
+    }
+  }, [isAuthenticated, isLoading, router]);
 
-  if (error || !user) {
-    redirect("/auth/login");
+  useEffect(() => {
+    if (profile && profile.userType === "consumer") {
+      router.push("/dashboard");
+    }
+  }, [profile, router]);
+
+  if (isLoading || profile === undefined || categories === undefined) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">A carregar...</div>
+      </div>
+    );
   }
 
-  // Get user profile to check if they can create products
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile || profile.user_type === "consumer") {
-    redirect("/dashboard");
+  if (!profile) {
+    router.push("/auth/login");
+    return null;
   }
-
-  // Get categories for the form
-  const { data: categories } = await supabase
-    .from("categories")
-    .select("*")
-    .order("name");
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b border-border">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -63,7 +68,13 @@ export default async function NewProductPage() {
           </p>
         </div>
 
-        <ProductForm categories={categories || []} />
+        <ProductForm
+          categories={(categories || []).map((c) => ({
+            id: c._id,
+            name: c.name,
+            icon: c.icon,
+          }))}
+        />
       </div>
     </div>
   );

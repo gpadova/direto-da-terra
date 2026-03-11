@@ -1,5 +1,10 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+"use client";
+
+import { Suspense, useState } from "react";
+import { useConvexAuth, useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 import { UserNav } from "@/components/auth/user-nav";
 import {
   Card,
@@ -10,53 +15,38 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Leaf, ArrowLeft, Clock, MapPin, Package } from "lucide-react";
+import { Leaf, ArrowLeft, Clock, MapPin, Package, Star, CheckCircle } from "lucide-react";
 import Link from "next/link";
+import { ReviewDialog } from "@/components/reviews/review-dialog";
+import type { Id } from "@/convex/_generated/dataModel";
 
-export default async function OrdersPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ success?: string }>;
-}) {
-  const params = await searchParams;
-  const supabase = await createClient();
+export default function OrdersPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">A carregar...</div>
+      </div>
+    }>
+      <OrdersContent />
+    </Suspense>
+  );
+}
 
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+function OrdersContent() {
+  const searchParams = useSearchParams();
+  const success = searchParams.get("success");
+  const { isAuthenticated, isLoading } = useConvexAuth();
+  const orders = useQuery(api.orders.listByBuyer);
+  const reviewedOrderIds = useQuery(api.reviews.listByReviewer);
+  const router = useRouter();
+  const [reviewingOrderId, setReviewingOrderId] = useState<Id<"orders"> | null>(null);
+  const [reviewingSellerName, setReviewingSellerName] = useState("");
 
-  if (error || !user) {
-    redirect("/auth/login");
-  }
-
-  // Get user's orders as a buyer
-  const { data: orders } = await supabase
-    .from("orders")
-    .select(
-      `
-      *,
-      profiles!orders_seller_id_fkey (
-        full_name,
-        user_type,
-        city
-      ),
-      order_items (
-        id,
-        quantity,
-        unit_price,
-        total_price,
-        products (
-          title,
-          unit,
-          pickup_location,
-          pickup_instructions
-        )
-      )
-    `
-    )
-    .eq("buyer_id", user.id)
-    .order("created_at", { ascending: false });
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push("/auth/login");
+    }
+  }, [isAuthenticated, isLoading, router]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -75,9 +65,16 @@ export default async function OrdersPage({
     }
   };
 
+  if (isLoading || orders === undefined) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">A carregar...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b border-border">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -103,7 +100,7 @@ export default async function OrdersPage({
           </p>
         </div>
 
-        {params.success && (
+        {success && (
           <Card className="mb-6 border-green-200 bg-green-50">
             <CardContent className="pt-6">
               <div className="flex items-center gap-2 text-green-800">
@@ -123,66 +120,60 @@ export default async function OrdersPage({
         {orders && orders.length > 0 ? (
           <div className="space-y-6">
             {orders.map((order) => (
-              <Card key={order.id}>
+              <Card key={order._id}>
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div>
                       <CardTitle className="text-lg">
-                        Pedido #{order.id.slice(-8)}
+                        Pedido #{order._id.slice(-8)}
                       </CardTitle>
                       <CardDescription className="flex items-center gap-4 mt-1">
                         <span className="flex items-center gap-1">
                           <Clock className="h-4 w-4" />
-                          {new Date(order.created_at).toLocaleDateString()}
+                          {new Date(order._creationTime).toLocaleDateString()}
                         </span>
-                        <span>De {order.profiles.full_name}</span>
+                        <span>De {order.seller?.fullName}</span>
                       </CardDescription>
                     </div>
                     <div className="text-right">
                       <Badge className={getStatusColor(order.status)}>
-                        {order.status}
+                        {order.status === "pending" ? "Pendente" : order.status === "confirmed" ? "Confirmado" : order.status === "ready" ? "Pronto" : order.status === "completed" ? "Concluído" : order.status === "cancelled" ? "Cancelado" : order.status}
                       </Badge>
                       <p className="text-lg font-bold text-primary mt-1">
-                        €{order.total_amount.toFixed(2)}
+                        R${order.totalAmount.toFixed(2)}
                       </p>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Order Items */}
                   <div>
                     <h4 className="font-medium mb-2">Itens:</h4>
                     <div className="space-y-1">
-                      {order.order_items.map((item) => (
+                      {order.orderItems.map((item) => (
                         <div
-                          key={item.id}
+                          key={item._id}
                           className="flex justify-between text-sm"
                         >
                           <span>
-                            {item.products.title} × {item.quantity}{" "}
-                            {item.products.unit}
+                            {item.product?.title} × {item.quantity}{" "}
+                            {item.product?.unit}
                           </span>
-                          <span>€{item.total_price.toFixed(2)}</span>
+                          <span>R${item.totalPrice.toFixed(2)}</span>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* Pickup Information */}
-                  {order.order_items[0]?.products && (
+                  {order.orderItems[0]?.product && (
                     <div className="space-y-2">
                       <h4 className="font-medium">Informações de Retirada:</h4>
                       <div className="flex items-start gap-2 text-sm">
                         <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground" />
                         <div>
-                          <p>{order.order_items[0].products.pickup_location}</p>
-                          {order.order_items[0].products
-                            .pickup_instructions && (
+                          <p>{order.orderItems[0].product.pickupLocation}</p>
+                          {order.orderItems[0].product.pickupInstructions && (
                             <p className="text-muted-foreground mt-1">
-                              {
-                                order.order_items[0].products
-                                  .pickup_instructions
-                              }
+                              {order.orderItems[0].product.pickupInstructions}
                             </p>
                           )}
                         </div>
@@ -190,8 +181,7 @@ export default async function OrdersPage({
                     </div>
                   )}
 
-                  {/* Status Information */}
-                  <div className="pt-4 border-t">
+                  <div className="pt-4 border-t flex items-center justify-between">
                     <div className="text-sm text-muted-foreground">
                       {order.status === "pending" &&
                         "Aguardando confirmação do vendedor"}
@@ -204,6 +194,26 @@ export default async function OrdersPage({
                       {order.status === "cancelled" &&
                         "Este pedido foi cancelado"}
                     </div>
+                    {order.status === "completed" && reviewedOrderIds && (
+                      reviewedOrderIds.includes(order._id) ? (
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          <span>Avaliado</span>
+                        </div>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setReviewingOrderId(order._id);
+                            setReviewingSellerName(order.seller?.fullName ?? "Vendedor");
+                          }}
+                        >
+                          <Star className="mr-1 h-4 w-4" />
+                          Avaliar
+                        </Button>
+                      )
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -227,6 +237,17 @@ export default async function OrdersPage({
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {reviewingOrderId && (
+          <ReviewDialog
+            orderId={reviewingOrderId}
+            sellerName={reviewingSellerName}
+            open={!!reviewingOrderId}
+            onOpenChange={(open) => {
+              if (!open) setReviewingOrderId(null);
+            }}
+          />
         )}
       </div>
     </div>

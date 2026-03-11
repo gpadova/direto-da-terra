@@ -55,7 +55,7 @@ export function CartItems() {
                   <div className="flex-1">
                     <h4 className="font-medium">{item.title}</h4>
                     <p className="text-sm text-muted-foreground">
-                      €{item.price} per {item.unit}
+                      R${item.price} por {item.unit}
                     </p>
                   </div>
 
@@ -92,7 +92,7 @@ export function CartItems() {
                   </div>
 
                   <div className="text-right">
-                    <p className="font-medium">€{(item.price * item.quantity).toFixed(2)}</p>
+                    <p className="font-medium">R${(item.price * item.quantity).toFixed(2)}</p>
                     <p className="text-sm text-muted-foreground">
                       {item.quantity} {item.unit}
                     </p>
@@ -107,7 +107,7 @@ export function CartItems() {
               <div className="flex justify-between items-center pt-4 border-t">
                 <span className="font-medium">Subtotal:</span>
                 <span className="font-bold text-lg">
-                  €{sellerItems.reduce((total, item) => total + item.price * item.quantity, 0).toFixed(2)}
+                  R${sellerItems.reduce((total, item) => total + item.price * item.quantity, 0).toFixed(2)}
                 </span>
               </div>
             </div>
@@ -119,7 +119,7 @@ export function CartItems() {
         <CardContent className="pt-6">
           <div className="flex justify-between items-center mb-6">
             <span className="text-xl font-bold">Total:</span>
-            <span className="text-2xl font-bold text-primary">€{getTotalPrice().toFixed(2)}</span>
+            <span className="text-2xl font-bold text-primary">R${getTotalPrice().toFixed(2)}</span>
           </div>
 
           <div className="flex gap-4">

@@ -1,6 +1,8 @@
 "use client";
 
-import { createClient } from "@/lib/supabase/client";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import {
   Card,
   CardContent,
@@ -10,7 +12,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Edit, Eye, MoreHorizontal, Trash2 } from "lucide-react";
 import {
@@ -20,95 +21,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-interface Product {
-  id: string;
-  title: string;
-  description: string;
-  price: number;
-  original_price: number | null;
-  quantity: number;
-  unit: string;
-  expiry_date: string | null;
-  is_available: boolean;
-  images: string[];
-  categories: {
-    name: string;
-    icon: string;
-  };
-}
-
 interface ProductListProps {
-  sellerId: string;
+  sellerId: Id<"profiles">;
 }
 
 export function ProductList({ sellerId }: ProductListProps) {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const supabase = createClient();
+  const products = useQuery(api.products.listBySeller, { sellerId });
+  const toggleAvailability = useMutation(api.products.toggleAvailability);
+  const removeProduct = useMutation(api.products.remove);
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select(
-          `
-          *,
-          categories (
-            name,
-            icon
-          )
-        `
-        )
-        .eq("seller_id", sellerId)
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("Error fetching products:", error);
-      } else {
-        setProducts(data || []);
-      }
-      setLoading(false);
-    };
-
-    fetchProducts();
-  }, [sellerId, supabase]);
-
-  const toggleAvailability = async (
-    productId: string,
-    currentStatus: boolean
-  ) => {
-    const { error } = await supabase
-      .from("products")
-      .update({ is_available: !currentStatus })
-      .eq("id", productId)
-      .eq("seller_id", sellerId);
-
-    if (error) {
-      console.error("Error updating product:", error);
-    } else {
-      setProducts(
-        products.map((p) =>
-          p.id === productId ? { ...p, is_available: !currentStatus } : p
-        )
-      );
-    }
-  };
-
-  const deleteProduct = async (productId: string) => {
-    const { error } = await supabase
-      .from("products")
-      .delete()
-      .eq("id", productId)
-      .eq("seller_id", sellerId);
-
-    if (error) {
-      console.error("Error deleting product:", error);
-    } else {
-      setProducts(products.filter((p) => p.id !== productId));
-    }
-  };
-
-  if (loading) {
+  if (products === undefined) {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {[...Array(6)].map((_, i) => (
@@ -154,7 +76,16 @@ export function ProductList({ sellerId }: ProductListProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {products.map((product) => (
-        <Card key={product.id} className="relative">
+        <Card key={product._id} className="relative">
+          {product.imageUrls && product.imageUrls.length > 0 && (
+            <div className="aspect-video bg-muted overflow-hidden">
+              <img
+                src={product.imageUrls[0]}
+                alt={product.title}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )}
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between">
               <div className="flex-1">
@@ -162,8 +93,8 @@ export function ProductList({ sellerId }: ProductListProps) {
                   {product.title}
                 </CardTitle>
                 <CardDescription className="flex items-center gap-2 mt-1">
-                  <span>{product.categories?.icon}</span>
-                  <span>{product.categories?.name}</span>
+                  <span>{product.category?.icon}</span>
+                  <span>{product.category?.name}</span>
                 </CardDescription>
               </div>
               <DropdownMenu>
@@ -174,32 +105,30 @@ export function ProductList({ sellerId }: ProductListProps) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem asChild>
-                    <Link href={`/dashboard/products/${product.id}`}>
+                    <Link href={`/dashboard/products/${product._id}`}>
                       <Eye className="mr-2 h-4 w-4" />
-                      View
+                      Ver
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href={`/dashboard/products/${product.id}/edit`}>
+                    <Link href={`/dashboard/products/${product._id}/edit`}>
                       <Edit className="mr-2 h-4 w-4" />
-                      Edit
+                      Editar
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() =>
-                      toggleAvailability(product.id, product.is_available)
-                    }
+                    onClick={() => toggleAvailability({ id: product._id })}
                   >
-                    {product.is_available
-                      ? "Mark Unavailable"
-                      : "Mark Available"}
+                    {product.isAvailable
+                      ? "Marcar Indisponível"
+                      : "Marcar Disponível"}
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => deleteProduct(product.id)}
+                    onClick={() => removeProduct({ id: product._id })}
                     className="text-destructive"
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
+                    Excluir
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -214,17 +143,17 @@ export function ProductList({ sellerId }: ProductListProps) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-lg font-bold text-primary">
-                    €{product.price}
+                    R${product.price}
                   </span>
-                  {product.original_price &&
-                    product.original_price > product.price && (
+                  {product.originalPrice &&
+                    product.originalPrice > product.price && (
                       <span className="text-sm text-muted-foreground line-through">
-                        €{product.original_price}
+                        R${product.originalPrice}
                       </span>
                     )}
                 </div>
-                <Badge variant={product.is_available ? "default" : "secondary"}>
-                  {product.is_available ? "Available" : "Unavailable"}
+                <Badge variant={product.isAvailable ? "default" : "secondary"}>
+                  {product.isAvailable ? "Disponível" : "Indisponível"}
                 </Badge>
               </div>
 
@@ -232,10 +161,10 @@ export function ProductList({ sellerId }: ProductListProps) {
                 <span>
                   {product.quantity} {product.unit}
                 </span>
-                {product.expiry_date && (
+                {product.expiryDate && (
                   <span>
-                    Expires:{" "}
-                    {new Date(product.expiry_date).toLocaleDateString()}
+                    Validade:{" "}
+                    {new Date(product.expiryDate).toLocaleDateString("pt-BR")}
                   </span>
                 )}
               </div>

@@ -22,22 +22,22 @@ export default async function AuthErrorPage({
             <div className="mx-auto mb-4 w-12 h-12 bg-destructive/10 rounded-full flex items-center justify-center">
               <AlertCircle className="w-6 h-6 text-destructive" />
             </div>
-            <CardTitle className="text-2xl">Authentication Error</CardTitle>
+            <CardTitle className="text-2xl">Erro de Autenticação</CardTitle>
           </CardHeader>
           <CardContent className="text-center space-y-4">
             {params?.error_description ? (
               <p className="text-sm text-muted-foreground">{params.error_description}</p>
             ) : params?.error ? (
-              <p className="text-sm text-muted-foreground">Error: {params.error}</p>
+              <p className="text-sm text-muted-foreground">Erro: {params.error}</p>
             ) : (
-              <p className="text-sm text-muted-foreground">An authentication error occurred. Please try again.</p>
+              <p className="text-sm text-muted-foreground">Ocorreu um erro de autenticação. Por favor, tente novamente.</p>
             )}
             <div className="pt-4 space-y-2">
               <Button asChild className="w-full">
-                <Link href="/auth/login">Try signing in again</Link>
+                <Link href="/auth/login">Tentar entrar novamente</Link>
               </Button>
               <Button asChild variant="outline" className="w-full bg-transparent">
-                <Link href="/auth/signup">Create new account</Link>
+                <Link href="/auth/signup">Criar nova conta</Link>
               </Button>
             </div>
           </CardContent>

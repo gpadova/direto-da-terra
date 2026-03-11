@@ -89,14 +89,14 @@ export function SearchFilters({ categories, cities, searchParams }: SearchFilter
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search products..."
+            placeholder="Buscar produtos..."
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
             onKeyPress={handleKeyPress}
             className="pl-10"
           />
         </div>
-        <Button onClick={handleSearch}>Search</Button>
+        <Button onClick={handleSearch}>Buscar</Button>
       </div>
 
       {/* Filters Row */}
@@ -104,10 +104,10 @@ export function SearchFilters({ categories, cities, searchParams }: SearchFilter
         {/* Category Filter */}
         <Select value={searchParams.category || "all"} onValueChange={(value) => updateSearchParams("category", value)}>
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="All Categories" />
+            <SelectValue placeholder="Todas as Categorias" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
+            <SelectItem value="all">Todas as Categorias</SelectItem>
             {categories.map((category) => (
               <SelectItem key={category.id} value={category.id}>
                 <span className="flex items-center gap-2">
@@ -122,10 +122,10 @@ export function SearchFilters({ categories, cities, searchParams }: SearchFilter
         {/* Location Filter */}
         <Select value={searchParams.city || "all"} onValueChange={(value) => updateSearchParams("city", value)}>
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="All Locations" />
+            <SelectValue placeholder="Todas as Cidades" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Locations</SelectItem>
+            <SelectItem value="all">Todas as Cidades</SelectItem>
             {cities.map((city) => (
               <SelectItem key={city} value={city}>
                 {city}
@@ -137,13 +137,13 @@ export function SearchFilters({ categories, cities, searchParams }: SearchFilter
         {/* Sort Filter */}
         <Select value={searchParams.sortBy || "latest"} onValueChange={(value) => updateSearchParams("sortBy", value)}>
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Sort by" />
+            <SelectValue placeholder="Ordenar por" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="latest">Latest</SelectItem>
-            <SelectItem value="price_asc">Price: Low to High</SelectItem>
-            <SelectItem value="price_desc">Price: High to Low</SelectItem>
-            <SelectItem value="expiry">Expiring Soon</SelectItem>
+            <SelectItem value="latest">Mais Recentes</SelectItem>
+            <SelectItem value="price_asc">Preço: Menor para Maior</SelectItem>
+            <SelectItem value="price_desc">Preço: Maior para Menor</SelectItem>
+            <SelectItem value="expiry">Vencimento Próximo</SelectItem>
           </SelectContent>
         </Select>
 
@@ -152,7 +152,7 @@ export function SearchFilters({ categories, cities, searchParams }: SearchFilter
           <PopoverTrigger asChild>
             <Button variant="outline" className="gap-2 bg-transparent">
               <SlidersHorizontal className="h-4 w-4" />
-              More Filters
+              Mais Filtros
               {activeFiltersCount > 0 && (
                 <Badge variant="secondary" className="ml-1 h-5 w-5 rounded-full p-0 text-xs">
                   {activeFiltersCount}
@@ -163,39 +163,39 @@ export function SearchFilters({ categories, cities, searchParams }: SearchFilter
           <PopoverContent className="w-80" align="start">
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Price Range (€)</Label>
+                <Label>Faixa de Preço (R$)</Label>
                 <div className="flex gap-2">
                   <Input
-                    placeholder="Min"
+                    placeholder="Mín"
                     type="number"
                     value={minPrice}
                     onChange={(e) => setMinPrice(e.target.value)}
                   />
                   <Input
-                    placeholder="Max"
+                    placeholder="Máx"
                     type="number"
                     value={maxPrice}
                     onChange={(e) => setMaxPrice(e.target.value)}
                   />
                 </div>
                 <Button onClick={applyPriceFilter} size="sm" className="w-full">
-                  Apply Price Filter
+                  Aplicar Filtro de Preço
                 </Button>
               </div>
 
               <div className="space-y-2">
-                <Label>Seller Type</Label>
+                <Label>Tipo de Vendedor</Label>
                 <Select
                   value={searchParams.userType || "all"}
                   onValueChange={(value) => updateSearchParams("userType", value)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="All Sellers" />
+                    <SelectValue placeholder="Todos os Vendedores" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Sellers</SelectItem>
-                    <SelectItem value="producer">🌱 Producers</SelectItem>
-                    <SelectItem value="restaurant">🍽️ Restaurants</SelectItem>
+                    <SelectItem value="all">Todos os Vendedores</SelectItem>
+                    <SelectItem value="producer">🌱 Produtores</SelectItem>
+                    <SelectItem value="restaurant">🍽️ Restaurantes</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -207,7 +207,7 @@ export function SearchFilters({ categories, cities, searchParams }: SearchFilter
         {activeFiltersCount > 0 && (
           <Button variant="ghost" onClick={clearAllFilters} className="gap-2">
             <X className="h-4 w-4" />
-            Clear All
+            Limpar Tudo
           </Button>
         )}
       </div>
@@ -217,31 +217,31 @@ export function SearchFilters({ categories, cities, searchParams }: SearchFilter
         <div className="flex flex-wrap gap-2">
           {searchParams.search && (
             <Badge variant="secondary" className="gap-1">
-              Search: {searchParams.search}
+              Busca: {searchParams.search}
               <X className="h-3 w-3 cursor-pointer" onClick={() => updateSearchParams("search", null)} />
             </Badge>
           )}
           {searchParams.category && (
             <Badge variant="secondary" className="gap-1">
-              Category: {categories.find((c) => c.id === searchParams.category)?.name}
+              Categoria: {categories.find((c) => c.id === searchParams.category)?.name}
               <X className="h-3 w-3 cursor-pointer" onClick={() => updateSearchParams("category", null)} />
             </Badge>
           )}
           {searchParams.city && (
             <Badge variant="secondary" className="gap-1">
-              Location: {searchParams.city}
+              Cidade: {searchParams.city}
               <X className="h-3 w-3 cursor-pointer" onClick={() => updateSearchParams("city", null)} />
             </Badge>
           )}
           {searchParams.userType && (
             <Badge variant="secondary" className="gap-1">
-              Seller: {searchParams.userType === "producer" ? "Producers" : "Restaurants"}
+              Vendedor: {searchParams.userType === "producer" ? "Produtores" : "Restaurantes"}
               <X className="h-3 w-3 cursor-pointer" onClick={() => updateSearchParams("userType", null)} />
             </Badge>
           )}
           {(searchParams.minPrice || searchParams.maxPrice) && (
             <Badge variant="secondary" className="gap-1">
-              Price: €{searchParams.minPrice || "0"} - €{searchParams.maxPrice || "∞"}
+              Preço: R${searchParams.minPrice || "0"} - R${searchParams.maxPrice || "∞"}
               <X
                 className="h-3 w-3 cursor-pointer"
                 onClick={() => {

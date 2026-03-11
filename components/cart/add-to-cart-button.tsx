@@ -56,7 +56,7 @@ export function AddToCartButton({ product }: AddToCartButtonProps) {
     return (
       <div className="space-y-4">
         <Button disabled className="w-full">
-          Out of Stock
+          Esgotado
         </Button>
       </div>
     )
@@ -65,7 +65,7 @@ export function AddToCartButton({ product }: AddToCartButtonProps) {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="quantity">Quantity</Label>
+        <Label htmlFor="quantity">Quantidade</Label>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={decrementQuantity} disabled={quantity <= 1}>
             <Minus className="h-4 w-4" />
@@ -88,24 +88,24 @@ export function AddToCartButton({ product }: AddToCartButtonProps) {
             <Plus className="h-4 w-4" />
           </Button>
           <span className="text-sm text-muted-foreground ml-2">
-            {availableQuantity} {product.unit} available
+            {availableQuantity} {product.unit} disponível
           </span>
         </div>
       </div>
 
       <div className="flex items-center justify-between text-lg font-semibold">
         <span>Total:</span>
-        <span className="text-primary">€{(product.price * quantity).toFixed(2)}</span>
+        <span className="text-primary">R${(product.price * quantity).toFixed(2)}</span>
       </div>
 
       <Button onClick={handleAddToCart} className="w-full" size="lg">
         <ShoppingCart className="mr-2 h-4 w-4" />
-        Add to Cart
+        Adicionar ao Carrinho
       </Button>
 
       {totalInCart > 0 && (
         <p className="text-sm text-muted-foreground text-center">
-          You already have {totalInCart} {product.unit} in your cart
+          Você já tem {totalInCart} {product.unit} no seu carrinho
         </p>
       )}
     </div>

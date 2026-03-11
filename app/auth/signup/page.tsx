@@ -1,9 +1,9 @@
 "use client";
 
 import type React from "react";
-
-import { createClient } from "@/lib/supabase/client";
-import { createProfile } from "@/lib/profile-utils";
+import { useAuthActions } from "@convex-dev/auth/react";
+import { useConvexAuth, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export default function SignUpPage() {
   const [email, setEmail] = useState("");
@@ -34,62 +34,64 @@ export default function SignUpPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { signIn } = useAuthActions();
+  const { isAuthenticated } = useConvexAuth();
+  const createProfile = useMutation(api.profiles.createProfile);
+
+  // Store pending profile data after signup
+  const pendingProfile = useRef<{
+    email: string;
+    fullName: string;
+    userType: "consumer" | "producer" | "restaurant";
+  } | null>(null);
+
+  // When auth becomes ready after signup, create the profile
+  useEffect(() => {
+    if (isAuthenticated && pendingProfile.current) {
+      const data = pendingProfile.current;
+      pendingProfile.current = null;
+      createProfile(data)
+        .then(() => {
+          router.push("/dashboard");
+        })
+        .catch((err) => {
+          setError(err instanceof Error ? err.message : "Erro ao criar perfil");
+          setIsLoading(false);
+        });
+    }
+  }, [isAuthenticated, createProfile, router]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    const supabase = createClient();
     setIsLoading(true);
     setError(null);
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError("As senhas não coincidem");
       setIsLoading(false);
       return;
     }
 
     if (!userType) {
-      setError("Please select your account type");
+      setError("Por favor, selecione o tipo de conta");
       setIsLoading(false);
       return;
     }
 
     try {
-      // Step 1: Create the user account
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      // Store profile data to be created after auth is ready
+      pendingProfile.current = {
         email,
-        password,
-        options: {
-          emailRedirectTo:
-            process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ||
-            `${window.location.origin}/dashboard`,
-          data: {
-            full_name: fullName,
-            user_type: userType,
-          },
-        },
-      });
+        fullName,
+        userType: userType as "consumer" | "producer" | "restaurant",
+      };
 
-      if (authError) throw authError;
-
-      // Step 2: If user was created successfully, create the profile
-      if (authData.user) {
-        const { error: profileError } = await createProfile(supabase, {
-          id: authData.user.id,
-          email: email,
-          full_name: fullName,
-          user_type: userType as "consumer" | "producer" | "restaurant",
-        });
-
-        // Don't throw error if profile already exists (trigger might have created it)
-        if (profileError && !profileError.message.includes("duplicate key")) {
-          console.warn("Profile creation failed:", profileError);
-        }
-      }
-
-      router.push("/auth/signup-success");
+      await signIn("password", { email, password, flow: "signUp" });
+      // After signIn resolves, the useEffect above will handle profile creation
+      // once isAuthenticated becomes true
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred");
-    } finally {
+      pendingProfile.current = null;
+      setError(error instanceof Error ? error.message : "Ocorreu um erro");
       setIsLoading(false);
     }
   };
@@ -116,9 +118,11 @@ export default function SignUpPage() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-primary mb-2">
-            Direto da Terra
-          </h1>
+          <Link href="/" className="inline-block">
+            <h1 className="text-3xl font-bold text-primary mb-2 hover:opacity-80 transition-opacity">
+              Direto da Terra
+            </h1>
+          </Link>
           <p className="text-muted-foreground">
             Junte-se à nossa comunidade contra o desperdício alimentar
           </p>

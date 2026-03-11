@@ -1,6 +1,9 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { getOrCreateProfile } from "@/lib/profile-utils";
+"use client";
+
+import { useConvexAuth, useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { UserNav } from "@/components/auth/user-nav";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,36 +20,40 @@ import { ProductList } from "@/components/products/product-list";
 import { OrderList } from "@/components/orders/order-list";
 import { SellerAnalytics } from "@/components/analytics/seller-analytics";
 
-export default async function DashboardPage() {
-  const supabase = await createClient();
+export default function DashboardPage() {
+  const { isAuthenticated, isLoading } = useConvexAuth();
+  const profile = useQuery(api.profiles.currentProfile);
+  const router = useRouter();
 
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-  console.log("user dashboard", user);
-  console.log("error dashboard", error);
-  if (error || !user) {
-    redirect("/auth/login");
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push("/auth/login");
+    }
+  }, [isAuthenticated, isLoading, router]);
+
+  if (isLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">A carregar...</div>
+      </div>
+    );
   }
 
-  const { data: profile, error: profileError } = await getOrCreateProfile(
-    supabase,
-    user.id,
-    {
-      email: user.email || "",
-      full_name: user.user_metadata?.full_name || "",
-      user_type: user.user_metadata?.user_type || "consumer",
-    }
-  );
+  if (profile === undefined) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">A carregar...</div>
+      </div>
+    );
+  }
 
   if (!profile) {
-    redirect("/auth/login");
+    router.push("/auth/login");
+    return null;
   }
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b border-border">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -60,20 +67,19 @@ export default async function DashboardPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h2 className="text-3xl font-bold mb-2">
-            Bem-vindo de volta, {profile.full_name || "Usuário"}!
+            Bem-vindo de volta, {profile.fullName || "Usuário"}!
           </h2>
           <p className="text-muted-foreground">
-            {profile.user_type === "producer" &&
+            {profile.userType === "producer" &&
               "Gerencie seus anúncios de produtos e conecte-se com compradores locais."}
-            {profile.user_type === "restaurant" &&
+            {profile.userType === "restaurant" &&
               "Gerencie suas ofertas de alimentos excedentes e reduza o desperdício."}
-            {profile.user_type === "consumer" &&
+            {profile.userType === "consumer" &&
               "Descubra ofertas de alimentos frescos de produtores e restaurantes locais."}
           </p>
         </div>
 
-        {profile.user_type === "consumer" ? (
-          // Painel do Consumidor
+        {profile.userType === "consumer" ? (
           <div className="grid gap-6">
             <div className="grid md:grid-cols-3 gap-6">
               <Card>
@@ -98,7 +104,7 @@ export default async function DashboardPage() {
                   <BarChart3 className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">€0</div>
+                  <div className="text-2xl font-bold">R$0</div>
                   <p className="text-xs text-muted-foreground">
                     Comece a comprar para economizar!
                   </p>
@@ -138,7 +144,6 @@ export default async function DashboardPage() {
             </Card>
           </div>
         ) : (
-          // Painel do Produtor/Restaurante
           <Tabs defaultValue="products" className="space-y-6">
             <TabsList>
               <TabsTrigger value="products">Meus Produtos</TabsTrigger>
@@ -161,7 +166,7 @@ export default async function DashboardPage() {
                   </Link>
                 </Button>
               </div>
-              <ProductList sellerId={user.id} />
+              <ProductList sellerId={profile._id} />
             </TabsContent>
 
             <TabsContent value="orders" className="space-y-6">
@@ -171,7 +176,7 @@ export default async function DashboardPage() {
                   Gerencie pedidos recebidos e atualize seu status
                 </p>
               </div>
-              <OrderList sellerId={user.id} />
+              <OrderList sellerId={profile._id} />
             </TabsContent>
 
             <TabsContent value="analytics" className="space-y-6">
@@ -181,7 +186,7 @@ export default async function DashboardPage() {
                   Acompanhe o desempenho das suas vendas e impacto
                 </p>
               </div>
-              <SellerAnalytics sellerId={user.id} />
+              <SellerAnalytics sellerId={profile._id} />
             </TabsContent>
           </Tabs>
         )}

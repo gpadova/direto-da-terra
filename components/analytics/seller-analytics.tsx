@@ -1,137 +1,19 @@
-"use client"
+"use client";
 
-import { createClient } from "@/lib/supabase/client"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useEffect, useState } from "react"
-import { BarChart3, Package, Euro, TrendingUp, Users, Leaf } from "lucide-react"
-
-interface AnalyticsData {
-  totalSales: number
-  totalOrders: number
-  totalProducts: number
-  totalCustomers: number
-  foodSaved: number
-  recentSales: Array<{
-    date: string
-    amount: number
-  }>
-  topProducts: Array<{
-    title: string
-    sales: number
-    quantity_sold: number
-  }>
-}
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { BarChart3, Package, Euro, TrendingUp, Users, Leaf } from "lucide-react";
 
 interface SellerAnalyticsProps {
-  sellerId: string
+  sellerId: Id<"profiles">;
 }
 
 export function SellerAnalytics({ sellerId }: SellerAnalyticsProps) {
-  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const supabase = createClient()
+  const analytics = useQuery(api.orders.getAnalytics, { sellerId });
 
-  useEffect(() => {
-    const fetchAnalytics = async () => {
-      try {
-        // Get total sales and orders
-        const { data: orders } = await supabase
-          .from("orders")
-          .select("total_amount, created_at, buyer_id")
-          .eq("seller_id", sellerId)
-          .eq("status", "completed")
-
-        // Get total products
-        const { data: products } = await supabase.from("products").select("id, title").eq("seller_id", sellerId)
-
-        // Get order items for product analytics
-        const { data: orderItems } = await supabase
-          .from("order_items")
-          .select(
-            `
-            quantity,
-            total_price,
-            products (
-              title,
-              seller_id
-            ),
-            orders!inner (
-              seller_id,
-              status
-            )
-          `,
-          )
-          .eq("orders.seller_id", sellerId)
-          .eq("orders.status", "completed")
-
-        const totalSales = orders?.reduce((sum, order) => sum + order.total_amount, 0) || 0
-        const totalOrders = orders?.length || 0
-        const totalProducts = products?.length || 0
-        const uniqueCustomers = new Set(orders?.map((order) => order.buyer_id)).size
-        const foodSaved = orderItems?.reduce((sum, item) => sum + item.quantity, 0) || 0
-
-        // Calculate recent sales (last 7 days)
-        const sevenDaysAgo = new Date()
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-        const recentSales =
-          orders
-            ?.filter((order) => new Date(order.created_at) >= sevenDaysAgo)
-            .reduce(
-              (acc, order) => {
-                const date = new Date(order.created_at).toLocaleDateString()
-                const existing = acc.find((item) => item.date === date)
-                if (existing) {
-                  existing.amount += order.total_amount
-                } else {
-                  acc.push({ date, amount: order.total_amount })
-                }
-                return acc
-              },
-              [] as Array<{ date: string; amount: number }>,
-            ) || []
-
-        // Calculate top products
-        const productSales =
-          orderItems?.reduce(
-            (acc, item) => {
-              if (item.products) {
-                const title = item.products.title
-                if (!acc[title]) {
-                  acc[title] = { sales: 0, quantity_sold: 0 }
-                }
-                acc[title].sales += item.total_price
-                acc[title].quantity_sold += item.quantity
-              }
-              return acc
-            },
-            {} as Record<string, { sales: number; quantity_sold: number }>,
-          ) || {}
-
-        const topProducts = Object.entries(productSales)
-          .map(([title, data]) => ({ title, ...data }))
-          .sort((a, b) => b.sales - a.sales)
-          .slice(0, 5)
-
-        setAnalytics({
-          totalSales,
-          totalOrders,
-          totalProducts,
-          totalCustomers: uniqueCustomers,
-          foodSaved,
-          recentSales,
-          topProducts,
-        })
-      } catch (error) {
-        console.error("Error fetching analytics:", error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchAnalytics()
-  }, [sellerId, supabase])
-
-  if (loading) {
+  if (analytics === undefined) {
     return (
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {[...Array(6)].map((_, i) => (
@@ -147,7 +29,7 @@ export function SellerAnalytics({ sellerId }: SellerAnalyticsProps) {
           </Card>
         ))}
       </div>
-    )
+    );
   }
 
   if (!analytics) {
@@ -156,93 +38,91 @@ export function SellerAnalytics({ sellerId }: SellerAnalyticsProps) {
         <CardContent className="pt-6">
           <div className="text-center py-8">
             <BarChart3 className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <h4 className="text-lg font-medium mb-2">No analytics data</h4>
-            <p className="text-muted-foreground">Start selling to see your analytics.</p>
+            <h4 className="text-lg font-medium mb-2">Sem dados de análise</h4>
+            <p className="text-muted-foreground">Comece a vender para ver suas análises.</p>
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
     <div className="space-y-6">
-      {/* Key Metrics */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
+            <CardTitle className="text-sm font-medium">Vendas Totais</CardTitle>
             <Euro className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">€{analytics.totalSales.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">From completed orders</p>
+            <div className="text-2xl font-bold text-primary">R${analytics.totalSales.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">De pedidos concluídos</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+            <CardTitle className="text-sm font-medium">Total de Pedidos</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{analytics.totalOrders}</div>
-            <p className="text-xs text-muted-foreground">Completed orders</p>
+            <p className="text-xs text-muted-foreground">Pedidos concluídos</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Products Listed</CardTitle>
+            <CardTitle className="text-sm font-medium">Produtos Listados</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{analytics.totalProducts}</div>
-            <p className="text-xs text-muted-foreground">Active listings</p>
+            <p className="text-xs text-muted-foreground">Anúncios ativos</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Customers</CardTitle>
+            <CardTitle className="text-sm font-medium">Clientes</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{analytics.totalCustomers}</div>
-            <p className="text-xs text-muted-foreground">Unique buyers</p>
+            <p className="text-xs text-muted-foreground">Compradores únicos</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Food Saved</CardTitle>
+            <CardTitle className="text-sm font-medium">Alimento Salvo</CardTitle>
             <Leaf className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary">{analytics.foodSaved}</div>
-            <p className="text-xs text-muted-foreground">Items sold</p>
+            <p className="text-xs text-muted-foreground">Itens vendidos</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Order Value</CardTitle>
+            <CardTitle className="text-sm font-medium">Valor Médio do Pedido</CardTitle>
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              €{analytics.totalOrders > 0 ? (analytics.totalSales / analytics.totalOrders).toFixed(2) : "0.00"}
+              R${analytics.totalOrders > 0 ? (analytics.totalSales / analytics.totalOrders).toFixed(2) : "0,00"}
             </div>
-            <p className="text-xs text-muted-foreground">Per completed order</p>
+            <p className="text-xs text-muted-foreground">Por pedido concluído</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Top Products */}
       {analytics.topProducts.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Top Selling Products</CardTitle>
-            <CardDescription>Your best performing items</CardDescription>
+            <CardTitle>Produtos Mais Vendidos</CardTitle>
+            <CardDescription>Seus itens com melhor desempenho</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -254,11 +134,11 @@ export function SellerAnalytics({ sellerId }: SellerAnalyticsProps) {
                     </div>
                     <div>
                       <p className="font-medium">{product.title}</p>
-                      <p className="text-sm text-muted-foreground">{product.quantity_sold} items sold</p>
+                      <p className="text-sm text-muted-foreground">{product.quantitySold} itens vendidos</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-medium text-primary">€{product.sales.toFixed(2)}</p>
+                    <p className="font-medium text-primary">R${product.sales.toFixed(2)}</p>
                   </div>
                 </div>
               ))}
@@ -267,5 +147,5 @@ export function SellerAnalytics({ sellerId }: SellerAnalyticsProps) {
         </Card>
       )}
     </div>
-  )
+  );
 }

@@ -1,7 +1,9 @@
-"use client"
+"use client";
 
-import { createClient } from "@/lib/supabase/client"
-import { Button } from "@/components/ui/button"
+import { useAuthActions } from "@convex-dev/auth/react";
+import { useConvexAuth, useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,64 +11,44 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { CartButton } from "@/components/cart/cart-button"
-import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
-import type { User } from "@supabase/supabase-js"
-import { LogOut, Settings, UserIcon } from "lucide-react"
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { CartButton } from "@/components/cart/cart-button";
+import { useRouter } from "next/navigation";
+import { LogOut, Settings, UserIcon } from "lucide-react";
 
 export function UserNav() {
-  const [user, setUser] = useState<User | null>(null)
-  const router = useRouter()
-  const supabase = createClient()
-
-  useEffect(() => {
-    const getUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      setUser(user)
-    }
-
-    getUser()
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-    })
-
-    return () => subscription.unsubscribe()
-  }, [supabase])
+  const { isAuthenticated } = useConvexAuth();
+  const profile = useQuery(api.profiles.currentProfile);
+  const router = useRouter();
+  const { signOut } = useAuthActions();
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push("/auth/login")
-  }
+    await signOut();
+    router.push("/auth/login");
+  };
 
-  if (!user) {
+  if (!isAuthenticated || !profile) {
     return (
       <div className="flex items-center gap-2">
         <Button asChild variant="outline">
-          <a href="/auth/login">Sign in</a>
+          <a href="/auth/login">Entrar</a>
         </Button>
         <Button asChild>
-          <a href="/auth/signup">Sign up</a>
+          <a href="/auth/signup">Registar-se</a>
         </Button>
       </div>
-    )
+    );
   }
 
   const initials =
-    user.user_metadata?.full_name
+    profile.fullName
       ?.split(" ")
       .map((n: string) => n[0])
       .join("")
       .toUpperCase() ||
-    user.email?.[0].toUpperCase() ||
-    "U"
+    profile.email?.[0].toUpperCase() ||
+    "U";
 
   return (
     <div className="flex items-center gap-2">
@@ -76,8 +58,8 @@ export function UserNav() {
           <Button variant="ghost" className="relative h-8 w-8 rounded-full">
             <Avatar className="h-8 w-8">
               <AvatarImage
-                src={user.user_metadata?.avatar_url || "/placeholder.svg"}
-                alt={user.user_metadata?.full_name}
+                src={profile.avatarUrl || "/placeholder.svg"}
+                alt={profile.fullName}
               />
               <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
@@ -86,26 +68,30 @@ export function UserNav() {
         <DropdownMenuContent className="w-56" align="end" forceMount>
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">{user.user_metadata?.full_name || "User"}</p>
-              <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+              <p className="text-sm font-medium leading-none">
+                {profile.fullName || "Usuário"}
+              </p>
+              <p className="text-xs leading-none text-muted-foreground">
+                {profile.email}
+              </p>
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => router.push("/dashboard")}>
             <UserIcon className="mr-2 h-4 w-4" />
-            <span>Dashboard</span>
+            <span>Painel</span>
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => router.push("/orders")}>
             <Settings className="mr-2 h-4 w-4" />
-            <span>My Orders</span>
+            <span>Meus Pedidos</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleSignOut}>
             <LogOut className="mr-2 h-4 w-4" />
-            <span>Sign out</span>
+            <span>Sair</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
-  )
+  );
 }
