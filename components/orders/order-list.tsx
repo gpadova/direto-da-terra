@@ -7,17 +7,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
-import { Clock, User, Package, Phone, MessageSquare } from "lucide-react";
+import { Clock, User, Package, Phone, MessageSquare, CalendarClock } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { formatPickupLabel, parsePickupTime } from "@/lib/pickup";
+import { todayInSaoPaulo } from "@/lib/expiry";
 
-interface OrderListProps {
-  sellerId: Id<"profiles">;
-}
-
-export function OrderList({ sellerId }: OrderListProps) {
-  const orders = useQuery(api.orders.listBySeller, { sellerId });
+export function OrderList() {
+  const orders = useQuery(api.orders.listBySeller);
   const updateStatus = useMutation(api.orders.updateStatus);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"all" | "today">("all");
 
   const handleUpdateStatus = async (orderId: Id<"orders">, newStatus: "pending" | "confirmed" | "ready" | "completed" | "cancelled") => {
     setUpdatingStatus(orderId);
@@ -114,9 +114,42 @@ export function OrderList({ sellerId }: OrderListProps) {
     );
   }
 
+  // Retiradas de hoje: pedidos confirmados/prontos com retirada agendada para hoje,
+  // ordenados pela faixa de horário.
+  const today = todayInSaoPaulo();
+  const todaysPickups = orders
+    .filter(
+      (order) =>
+        (order.status === "confirmed" || order.status === "ready") &&
+        parsePickupTime(order.pickupTime)?.date === today
+    )
+    .sort((a, b) => (a.pickupTime ?? "").localeCompare(b.pickupTime ?? ""));
+  const visibleOrders = filter === "today" ? todaysPickups : orders;
+
   return (
     <div className="space-y-4">
-      {orders.map((order) => (
+      <Tabs value={filter} onValueChange={(value) => setFilter(value as "all" | "today")}>
+        <TabsList>
+          <TabsTrigger value="all">Todos ({orders.length})</TabsTrigger>
+          <TabsTrigger value="today">Retiradas de hoje ({todaysPickups.length})</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {visibleOrders.length === 0 && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-8">
+              <CalendarClock className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+              <h4 className="text-lg font-medium mb-2">Nenhuma retirada para hoje</h4>
+              <p className="text-muted-foreground">
+                Pedidos confirmados ou prontos com retirada agendada para hoje aparecerão aqui.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {visibleOrders.map((order) => (
         <Card key={order._id}>
           <CardHeader>
             <div className="flex items-start justify-between">
@@ -132,6 +165,12 @@ export function OrderList({ sellerId }: OrderListProps) {
                     {new Date(order._creationTime).toLocaleDateString("pt-BR")}
                   </span>
                 </CardDescription>
+                {order.pickupTime && (
+                  <p className="flex items-center gap-1 mt-2 text-sm font-medium text-primary">
+                    <CalendarClock className="h-4 w-4" />
+                    Retirada: {formatPickupLabel(order.pickupTime)}
+                  </p>
+                )}
               </div>
               <div className="text-right">
                 <Badge className={getStatusColor(order.status)}>{getStatusLabel(order.status)}</Badge>

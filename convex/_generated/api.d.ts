@@ -10,7 +10,11 @@
 
 import type * as auth from "../auth.js";
 import type * as categories from "../categories.js";
+import type * as crons from "../crons.js";
+import type * as expiry from "../expiry.js";
 import type * as http from "../http.js";
+import type * as impact from "../impact.js";
+import type * as lib_units from "../lib/units.js";
 import type * as orders from "../orders.js";
 import type * as products from "../products.js";
 import type * as profiles from "../profiles.js";
@@ -25,7 +29,11 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   categories: typeof categories;
+  crons: typeof crons;
+  expiry: typeof expiry;
   http: typeof http;
+  impact: typeof impact;
+  "lib/units": typeof lib_units;
   orders: typeof orders;
   products: typeof products;
   profiles: typeof profiles;

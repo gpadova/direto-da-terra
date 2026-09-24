@@ -12,6 +12,7 @@ import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { StarRating } from "@/components/reviews/star-rating";
 import { useParams, useRouter } from "next/navigation";
 import type { Id } from "@/convex/_generated/dataModel";
+import { formatExpiryDate, isLastChance } from "@/lib/expiry";
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -97,6 +98,9 @@ export default function ProductDetailPage() {
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-lg">{product.category?.icon}</span>
                 <Badge variant="secondary">{product.category?.name}</Badge>
+                {isLastChance(product.expiryDate) && (
+                  <Badge variant="destructive">Última chance</Badge>
+                )}
                 {product.originalPrice && product.originalPrice > product.price && (
                   <Badge className="bg-secondary">
                     {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% off
@@ -128,7 +132,7 @@ export default function ProductDetailPage() {
               {product.expiryDate && (
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Validade: {new Date(product.expiryDate).toLocaleDateString("pt-BR")}</span>
+                  <span className="text-sm">Validade: {formatExpiryDate(product.expiryDate)}</span>
                 </div>
               )}
               {product.pickupLocation && (
@@ -172,7 +176,14 @@ export default function ProductDetailPage() {
               <CardContent>
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
-                    <h4 className="font-semibold">{product.seller.fullName}</h4>
+                    <h4 className="font-semibold">
+                      <Link
+                        href={`/sellers/${product.seller._id}`}
+                        className="hover:text-primary hover:underline"
+                      >
+                        {product.seller.fullName}
+                      </Link>
+                    </h4>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">
                         {product.seller.userType === "producer" ? "Produtor Local" : "Restaurante"}

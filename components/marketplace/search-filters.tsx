@@ -4,13 +4,15 @@ import type React from "react"
 
 import { useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Label } from "@/components/ui/label"
-import { Search, X, SlidersHorizontal } from "lucide-react"
+import { Search, X, SlidersHorizontal, Loader2 } from "lucide-react"
 
 interface Category {
   id: string
@@ -29,7 +31,27 @@ interface SearchFiltersProps {
     maxPrice?: string
     city?: string
     sortBy?: string
+    radius?: string
   }
+}
+
+const RADIUS_OPTIONS = ["5", "10", "25", "50"]
+
+// ~100 m precision: enough for "near me" and avoids putting an exact address in the URL
+const roundCoord = (value: number) => (Math.round(value * 1000) / 1000).toString()
+
+function getBrowserPosition(): Promise<{ lat: number; lng: number }> {
+  return new Promise((resolve, reject) => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      reject(new Error("unsupported"))
+      return
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      reject,
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 5 * 60 * 1000 },
+    )
+  })
 }
 
 export function SearchFilters({ categories, cities, searchParams }: SearchFiltersProps) {
@@ -38,6 +60,55 @@ export function SearchFilters({ categories, cities, searchParams }: SearchFilter
   const [searchValue, setSearchValue] = useState(searchParams.search || "")
   const [minPrice, setMinPrice] = useState(searchParams.minPrice || "")
   const [maxPrice, setMaxPrice] = useState(searchParams.maxPrice || "")
+  const [locating, setLocating] = useState(false)
+  const [locationError, setLocationError] = useState<string | null>(null)
+  const profile = useQuery(api.profiles.currentProfile)
+
+  const hasLocation = Boolean(currentSearchParams.get("lat") && currentSearchParams.get("lng"))
+
+  // Resolve the buyer location: browser geolocation first, then the saved profile coordinates
+  const resolveLocation = async (): Promise<{ lat: number; lng: number } | null> => {
+    try {
+      return await getBrowserPosition()
+    } catch {
+      if (profile?.latitude !== undefined && profile?.longitude !== undefined) {
+        return { lat: profile.latitude, lng: profile.longitude }
+      }
+      return null
+    }
+  }
+
+  // Apply params that depend on the buyer location, fetching it first when needed
+  const updateLocationParams = async (updates: Record<string, string | null>) => {
+    const params = new URLSearchParams(currentSearchParams.toString())
+    for (const [key, value] of Object.entries(updates)) {
+      if (value) params.set(key, value)
+      else params.delete(key)
+    }
+
+    const needsLocation = params.get("sortBy") === "distance" || params.has("radius")
+    if (needsLocation && !hasLocation) {
+      setLocating(true)
+      setLocationError(null)
+      const location = await resolveLocation()
+      setLocating(false)
+      if (!location) {
+        setLocationError(
+          "Não foi possível obter a sua localização. Permita o acesso no navegador ou cadastre-a nas configurações.",
+        )
+        return
+      }
+      params.set("lat", roundCoord(location.lat))
+      params.set("lng", roundCoord(location.lng))
+    }
+    if (!needsLocation) {
+      params.delete("lat")
+      params.delete("lng")
+    }
+
+    setLocationError(null)
+    router.push(`/marketplace?${params.toString()}`)
+  }
 
   const updateSearchParams = (key: string, value: string | null) => {
     const params = new URLSearchParams(currentSearchParams.toString())
@@ -135,7 +206,10 @@ export function SearchFilters({ categories, cities, searchParams }: SearchFilter
         </Select>
 
         {/* Sort Filter */}
-        <Select value={searchParams.sortBy || "latest"} onValueChange={(value) => updateSearchParams("sortBy", value)}>
+        <Select
+          value={searchParams.sortBy || "latest"}
+          onValueChange={(value) => updateLocationParams({ sortBy: value === "latest" ? null : value })}
+        >
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Ordenar por" />
           </SelectTrigger>
@@ -144,8 +218,34 @@ export function SearchFilters({ categories, cities, searchParams }: SearchFilter
             <SelectItem value="price_asc">Preço: Menor para Maior</SelectItem>
             <SelectItem value="price_desc">Preço: Maior para Menor</SelectItem>
             <SelectItem value="expiry">Vencimento Próximo</SelectItem>
+            <SelectItem value="distance">Mais próximos</SelectItem>
           </SelectContent>
         </Select>
+
+        {/* Distance Radius Filter */}
+        <Select
+          value={searchParams.radius || "any"}
+          onValueChange={(value) => updateLocationParams({ radius: value === "any" ? null : value })}
+        >
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="Qualquer distância" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="any">Qualquer distância</SelectItem>
+            {RADIUS_OPTIONS.map((km) => (
+              <SelectItem key={km} value={km}>
+                Até {km} km
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {locating && (
+          <span className="flex items-center gap-1 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Obtendo localização...
+          </span>
+        )}
 
         {/* Advanced Filters */}
         <Popover>
@@ -212,6 +312,8 @@ export function SearchFilters({ categories, cities, searchParams }: SearchFilter
         )}
       </div>
 
+      {locationError && <p className="text-sm text-destructive">{locationError}</p>}
+
       {/* Active Filters Display */}
       {activeFiltersCount > 0 && (
         <div className="flex flex-wrap gap-2">
@@ -237,6 +339,12 @@ export function SearchFilters({ categories, cities, searchParams }: SearchFilter
             <Badge variant="secondary" className="gap-1">
               Vendedor: {searchParams.userType === "producer" ? "Produtores" : "Restaurantes"}
               <X className="h-3 w-3 cursor-pointer" onClick={() => updateSearchParams("userType", null)} />
+            </Badge>
+          )}
+          {searchParams.radius && (
+            <Badge variant="secondary" className="gap-1">
+              Distância: até {searchParams.radius} km
+              <X className="h-3 w-3 cursor-pointer" onClick={() => updateLocationParams({ radius: null })} />
             </Badge>
           )}
           {(searchParams.minPrice || searchParams.maxPrice) && (

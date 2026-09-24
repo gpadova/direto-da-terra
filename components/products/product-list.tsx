@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import { formatExpiryDate } from "@/lib/expiry";
 import { Edit, Eye, MoreHorizontal, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
@@ -164,7 +165,7 @@ export function ProductList({ sellerId }: ProductListProps) {
                 {product.expiryDate && (
                   <span>
                     Validade:{" "}
-                    {new Date(product.expiryDate).toLocaleDateString("pt-BR")}
+                    {formatExpiryDate(product.expiryDate)}
                   </span>
                 )}
               </div>

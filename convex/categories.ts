@@ -1,5 +1,4 @@
-import { v } from "convex/values";
-import { query, mutation } from "./_generated/server";
+import { query, internalMutation } from "./_generated/server";
 
 export const list = query({
   handler: async (ctx) => {
@@ -7,7 +6,8 @@ export const list = query({
   },
 });
 
-export const seed = mutation({
+// Internal: run with `npx convex run categories:seed` (not callable by clients).
+export const seed = internalMutation({
   handler: async (ctx) => {
     const existing = await ctx.db.query("categories").first();
     if (existing) return;

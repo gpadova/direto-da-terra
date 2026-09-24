@@ -46,6 +46,9 @@ export default defineSchema({
     pickupInstructions: v.optional(v.string()),
     images: v.optional(v.array(v.id("_storage"))),
     isAvailable: v.boolean(),
+    // Near-expiry automation: opt-in markdowns and the price before them
+    autoDiscount: v.optional(v.boolean()),
+    basePrice: v.optional(v.float64()),
   })
     .index("by_sellerId", ["sellerId"])
     .index("by_categoryId", ["categoryId"])
@@ -91,5 +94,6 @@ export default defineSchema({
     comment: v.optional(v.string()),
   })
     .index("by_reviewedId", ["reviewedId"])
+    .index("by_reviewerId", ["reviewerId"])
     .index("by_orderId", ["orderId"]),
 });
