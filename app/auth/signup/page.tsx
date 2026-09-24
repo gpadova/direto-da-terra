@@ -24,6 +24,9 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
+import { getErrorMessage } from "@/lib/errors";
+
+const MIN_PASSWORD_LENGTH = 8;
 
 export default function SignUpPage() {
   const [email, setEmail] = useState("");
@@ -55,7 +58,7 @@ export default function SignUpPage() {
           router.push("/dashboard");
         })
         .catch((err) => {
-          setError(err instanceof Error ? err.message : "Erro ao criar perfil");
+          setError(getErrorMessage(err, "Erro ao criar perfil. Tente novamente."));
           setIsLoading(false);
         });
     }
@@ -66,6 +69,12 @@ export default function SignUpPage() {
     setIsLoading(true);
     setError(null);
 
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setError(`A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres`);
+      setIsLoading(false);
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError("As senhas não coincidem");
       setIsLoading(false);
@@ -73,7 +82,7 @@ export default function SignUpPage() {
     }
 
     if (!userType) {
-      setError("Por favor, selecione o tipo de conta");
+      setError("Selecione o tipo de conta");
       setIsLoading(false);
       return;
     }
@@ -89,9 +98,16 @@ export default function SignUpPage() {
       await signIn("password", { email, password, flow: "signUp" });
       // After signIn resolves, the useEffect above will handle profile creation
       // once isAuthenticated becomes true
-    } catch (error: unknown) {
+    } catch (err: unknown) {
       pendingProfile.current = null;
-      setError(error instanceof Error ? error.message : "Ocorreu um erro");
+      // Auth errors are redacted in production ("Server Error"), so show a
+      // friendly message unless the server sent an explicit ConvexError.
+      setError(
+        getErrorMessage(
+          err,
+          "Não foi possível criar a conta. Verifique os dados ou tente outro email.",
+        ),
+      );
       setIsLoading(false);
     }
   };
@@ -105,7 +121,7 @@ export default function SignUpPage() {
     {
       value: "producer",
       label: "Produtor",
-      description: "Venda os seus produtos excedentes diretamente",
+      description: "Venda seus produtos excedentes diretamente",
     },
     {
       value: "restaurant",
@@ -124,15 +140,15 @@ export default function SignUpPage() {
             </h1>
           </Link>
           <p className="text-muted-foreground">
-            Junte-se à nossa comunidade contra o desperdício alimentar
+            Junte-se à nossa comunidade contra o desperdício de alimentos
           </p>
         </div>
 
         <Card>
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Crie a sua conta</CardTitle>
+            <CardTitle className="text-2xl">Crie sua conta</CardTitle>
             <CardDescription>
-              Comece a reduzir o desperdício alimentar na sua comunidade
+              Comece a reduzir o desperdício de alimentos na sua comunidade
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -142,7 +158,7 @@ export default function SignUpPage() {
                 <Input
                   id="fullName"
                   type="text"
-                  placeholder="O seu nome completo"
+                  placeholder="Seu nome completo"
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
@@ -163,7 +179,7 @@ export default function SignUpPage() {
                 <Label htmlFor="userType">Tipo de Conta</Label>
                 <Select value={userType} onValueChange={setUserType}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione o seu tipo de conta" />
+                    <SelectValue placeholder="Selecione seu tipo de conta" />
                   </SelectTrigger>
                   <SelectContent>
                     {userTypeOptions.map((option) => (
@@ -185,6 +201,8 @@ export default function SignUpPage() {
                   id="password"
                   type="password"
                   required
+                  minLength={MIN_PASSWORD_LENGTH}
+                  placeholder={`Mínimo de ${MIN_PASSWORD_LENGTH} caracteres`}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />

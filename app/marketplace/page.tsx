@@ -18,7 +18,7 @@ export default function MarketplacePage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">A carregar...</div>
+        <div className="animate-pulse text-muted-foreground">Carregando...</div>
       </div>
     }>
       <MarketplaceContent />
@@ -223,7 +223,7 @@ function MarketplaceContent() {
                 <h4 className="text-lg font-medium mb-2">Nenhum produto encontrado</h4>
                 <p className="text-muted-foreground">
                   {search || category || city || userType || radius
-                    ? "Tente ajustar os seus filtros de pesquisa para encontrar mais produtos."
+                    ? "Tente ajustar seus filtros de pesquisa para encontrar mais produtos."
                     : "Volte mais tarde para novas listagens de produtores e restaurantes locais."}
                 </p>
               </div>

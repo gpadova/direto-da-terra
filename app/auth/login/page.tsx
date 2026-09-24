@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import { getErrorMessage } from "@/lib/errors";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -40,20 +41,13 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      const result = await signIn("password", { email, password, flow: "signIn" });
-      console.log("signIn result:", result);
+      await signIn("password", { email, password, flow: "signIn" });
       setSignInComplete(true);
     } catch (err: unknown) {
+      // Auth errors are redacted in production ("Server Error"), so show a
+      // friendly message unless the server sent an explicit ConvexError.
       console.error("Login error:", err);
-
-      let message = "Email ou senha inválidos";
-      if (err instanceof Error) {
-        message = err.message;
-      } else if (typeof err === "object" && err !== null) {
-        message = JSON.stringify(err);
-      }
-
-      setError(message);
+      setError(getErrorMessage(err, "Email ou senha inválidos"));
       setIsLoading(false);
     }
   };
@@ -68,7 +62,7 @@ export default function LoginPage() {
             </h1>
           </Link>
           <p className="text-muted-foreground">
-            Reduzindo o desperdício alimentar, uma refeição de cada vez
+            Reduzindo o desperdício de alimentos, uma refeição de cada vez
           </p>
         </div>
 
@@ -91,7 +85,7 @@ export default function LoginPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Palavra-passe</Label>
+                <Label htmlFor="password">Senha</Label>
                 <Input
                   id="password"
                   type="password"
@@ -107,7 +101,7 @@ export default function LoginPage() {
               )}
               {signInComplete && !isAuthenticated && (
                 <div className="p-3 text-sm text-muted-foreground bg-muted rounded-md text-center">
-                  A autenticar...
+                  Autenticando...
                 </div>
               )}
               <Button type="submit" className="w-full" disabled={isLoading}>
@@ -120,7 +114,7 @@ export default function LoginPage() {
                 href="/auth/signup"
                 className="text-primary hover:underline font-medium"
               >
-                Registar-se
+                Cadastre-se
               </Link>
             </div>
           </CardContent>

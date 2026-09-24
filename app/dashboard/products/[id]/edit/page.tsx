@@ -16,7 +16,7 @@ import { Card, CardContent } from "@/components/ui/card";
 function Loading() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="animate-pulse text-muted-foreground">A carregar...</div>
+      <div className="animate-pulse text-muted-foreground">Carregando...</div>
     </div>
   );
 }
@@ -68,7 +68,7 @@ function EditProductContent() {
           </Button>
           <h2 className="text-3xl font-bold mb-2">Editar Produto</h2>
           <p className="text-muted-foreground">
-            Atualize preço, quantidade e validade para manter o seu anúncio em dia.
+            Atualize preço, quantidade e validade para manter seu anúncio em dia.
           </p>
         </div>
 

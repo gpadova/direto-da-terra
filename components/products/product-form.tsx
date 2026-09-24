@@ -1,5 +1,6 @@
 "use client";
 
+import { getErrorMessage } from "@/lib/errors";
 import type React from "react";
 import { useRef, useState } from "react";
 import { useMutation } from "convex/react";
@@ -130,8 +131,8 @@ export function ProductForm({ categories, product, isEditing = false }: ProductF
         const objectUrl = URL.createObjectURL(file);
         setImages((prev) => [...prev, { storageId, url: objectUrl }]);
       }
-    } catch {
-      toast.error("Erro ao enviar imagens");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Erro ao enviar imagens"));
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
@@ -174,7 +175,7 @@ export function ProductForm({ categories, product, isEditing = false }: ProductF
 
       router.push("/dashboard");
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred");
+      setError(getErrorMessage(error, "Erro ao salvar o produto"));
     } finally {
       setIsLoading(false);
     }
@@ -238,7 +239,7 @@ export function ProductForm({ categories, product, isEditing = false }: ProductF
             <Label htmlFor="description">Descrição</Label>
             <Textarea
               id="description"
-              placeholder="Descreva o seu produto, o seu estado e quaisquer notas especiais..."
+              placeholder="Descreva seu produto, o estado dele e observações especiais..."
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}

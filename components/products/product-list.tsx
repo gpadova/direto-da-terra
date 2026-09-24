@@ -1,5 +1,6 @@
 "use client";
 
+import { getErrorMessage } from "@/lib/errors";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -13,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import { toast } from "sonner";
 import { formatExpiryDate } from "@/lib/expiry";
 import { Edit, Eye, MoreHorizontal, Trash2 } from "lucide-react";
 import {
@@ -30,6 +32,23 @@ export function ProductList({ sellerId }: ProductListProps) {
   const products = useQuery(api.products.listBySeller, { sellerId });
   const toggleAvailability = useMutation(api.products.toggleAvailability);
   const removeProduct = useMutation(api.products.remove);
+
+  const handleToggleAvailability = async (id: Id<"products">) => {
+    try {
+      await toggleAvailability({ id });
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Não foi possível alterar a disponibilidade"));
+    }
+  };
+
+  const handleRemove = async (id: Id<"products">) => {
+    try {
+      await removeProduct({ id });
+      toast.success("Produto excluído");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Não foi possível excluir o produto"));
+    }
+  };
 
   if (products === undefined) {
     return (
@@ -118,14 +137,14 @@ export function ProductList({ sellerId }: ProductListProps) {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => toggleAvailability({ id: product._id })}
+                    onClick={() => handleToggleAvailability(product._id)}
                   >
                     {product.isAvailable
                       ? "Marcar Indisponível"
                       : "Marcar Disponível"}
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => removeProduct({ id: product._id })}
+                    onClick={() => handleRemove(product._id)}
                     className="text-destructive"
                   >
                     <Trash2 className="mr-2 h-4 w-4" />

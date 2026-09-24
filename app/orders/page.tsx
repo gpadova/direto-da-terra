@@ -1,5 +1,6 @@
 "use client";
 
+import { getErrorMessage } from "@/lib/errors";
 import { Suspense, useState } from "react";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -25,7 +26,7 @@ export default function OrdersPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">A carregar...</div>
+        <div className="animate-pulse text-muted-foreground">Carregando...</div>
       </div>
     }>
       <OrdersContent />
@@ -53,9 +54,7 @@ function OrdersContent() {
     try {
       await cancelOrder({ id: orderId });
     } catch (error: unknown) {
-      setCancelError(
-        error instanceof Error ? error.message : "Não foi possível cancelar o pedido"
-      );
+      setCancelError(getErrorMessage(error, "Não foi possível cancelar o pedido"));
     } finally {
       setCancellingOrderId(null);
     }
@@ -87,7 +86,7 @@ function OrdersContent() {
   if (isLoading || orders === undefined) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">A carregar...</div>
+        <div className="animate-pulse text-muted-foreground">Carregando...</div>
       </div>
     );
   }

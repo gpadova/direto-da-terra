@@ -19,6 +19,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { formatExpiryDate, isLastChance } from "@/lib/expiry";
+import { NotFoundState } from "@/components/not-found-state";
 
 const userTypeLabel: Record<string, string> = {
   producer: "Produtor Local",
@@ -32,9 +33,15 @@ export default function SellerPage() {
   const id = params.id as Id<"profiles">;
 
   const seller = useQuery(api.profiles.getById, { id });
-  const rating = useQuery(api.reviews.getAverageRating, { reviewedId: id });
-  const reviews = useQuery(api.reviews.listByReviewedId, { reviewedId: id });
-  const products = useQuery(api.products.listPublicBySeller, { sellerId: id });
+  // Only load related data once the seller is known to exist, so a malformed or
+  // unknown id in the URL doesn't trigger extra queries.
+  const sellerExists = !!seller;
+  const rating = useQuery(api.reviews.getAverageRating, sellerExists ? { reviewedId: id } : "skip");
+  const reviews = useQuery(api.reviews.listByReviewedId, sellerExists ? { reviewedId: id } : "skip");
+  const products = useQuery(
+    api.products.listPublicBySeller,
+    sellerExists ? { sellerId: id } : "skip"
+  );
 
   const header = (
     <header className="border-b border-border">
@@ -51,25 +58,18 @@ export default function SellerPage() {
   if (seller === undefined) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">A carregar...</div>
+        <div className="animate-pulse text-muted-foreground">Carregando...</div>
       </div>
     );
   }
 
   if (seller === null) {
     return (
-      <div className="min-h-screen bg-background">
-        {header}
-        <div className="container mx-auto px-4 py-16 text-center">
-          <h2 className="text-2xl font-bold mb-2">Vendedor não encontrado</h2>
-          <p className="text-muted-foreground mb-6">
-            Este perfil não existe ou foi removido.
-          </p>
-          <Button asChild>
-            <Link href="/marketplace">Ir para o Marketplace</Link>
-          </Button>
-        </div>
-      </div>
+      <NotFoundState
+        header={header}
+        title="Vendedor não encontrado"
+        description="Este perfil não existe ou foi removido."
+      />
     );
   }
 
@@ -230,7 +230,7 @@ export default function SellerPage() {
         <section>
           <h3 className="text-2xl font-bold mb-6">Avaliações recentes</h3>
           {reviews === undefined ? (
-            <div className="animate-pulse text-muted-foreground">A carregar...</div>
+            <div className="animate-pulse text-muted-foreground">Carregando...</div>
           ) : reviews.length === 0 ? (
             <Card>
               <CardContent className="pt-6 text-center py-8 text-muted-foreground">

@@ -18,7 +18,7 @@ export function CartItems() {
             <div className="mx-auto h-12 w-12 bg-muted rounded-full flex items-center justify-center mb-4">
               <span className="text-2xl">🛒</span>
             </div>
-            <h4 className="text-lg font-medium mb-2">O seu carrinho está vazio</h4>
+            <h4 className="text-lg font-medium mb-2">Seu carrinho está vazio</h4>
             <p className="text-muted-foreground mb-4">Adicione alguns produtos do marketplace para começar.</p>
             <Button asChild>
               <Link href="/marketplace">Explorar Produtos</Link>

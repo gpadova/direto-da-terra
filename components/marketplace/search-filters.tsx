@@ -94,7 +94,7 @@ export function SearchFilters({ categories, cities, searchParams }: SearchFilter
       setLocating(false)
       if (!location) {
         setLocationError(
-          "Não foi possível obter a sua localização. Permita o acesso no navegador ou cadastre-a nas configurações.",
+          "Não foi possível obter sua localização. Permita o acesso no navegador ou cadastre-a nas configurações.",
         )
         return
       }

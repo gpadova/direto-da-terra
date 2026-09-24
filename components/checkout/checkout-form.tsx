@@ -1,5 +1,6 @@
 "use client";
 
+import { getErrorMessage } from "@/lib/errors";
 import type React from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -156,7 +157,7 @@ export function CheckoutForm({ profile }: CheckoutFormProps) {
       clearCart();
       router.push("/orders?success=true");
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Ocorreu um erro";
+      const message = getErrorMessage(error, "Não foi possível finalizar o pedido");
       if (placedSellers.length > 0 && placedSellers.length < Object.keys(itemsBySeller).length) {
         for (const sellerId of placedSellers) {
           for (const item of itemsBySeller[sellerId]) removeItem(item.id);

@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
@@ -14,9 +14,13 @@ export const currentProfile = query({
 });
 
 export const getById = query({
-  args: { id: v.id("profiles") },
+  // v.string() (e não v.id) para que ids malformados vindos da URL retornem
+  // null em vez de lançar erro de validação.
+  args: { id: v.string() },
   handler: async (ctx, args) => {
-    const profile = await ctx.db.get(args.id);
+    const id = ctx.db.normalizeId("profiles", args.id);
+    if (!id) return null;
+    const profile = await ctx.db.get(id);
     // Página pública apenas para vendedores; consumidores não são expostos.
     if (!profile || profile.userType === "consumer") return null;
     // Apenas campos públicos: sem email, telefone, endereço ou coordenadas.
@@ -43,7 +47,7 @@ export const createProfile = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    if (!userId) throw new ConvexError("Você precisa estar logado");
 
     const existing = await ctx.db
       .query("profiles")
@@ -55,7 +59,7 @@ export const createProfile = mutation({
     // Usa o email da conta autenticada (não confia no enviado pelo cliente).
     const user = await ctx.db.get(userId);
     const fullName = args.fullName.trim();
-    if (!fullName) throw new Error("O nome é obrigatório");
+    if (!fullName) throw new ConvexError("O nome é obrigatório");
 
     return await ctx.db.insert("profiles", {
       userId,
@@ -79,18 +83,18 @@ export const updateProfile = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    if (!userId) throw new ConvexError("Você precisa estar logado");
 
     const profile = await ctx.db
       .query("profiles")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
 
-    if (!profile) throw new Error("Profile not found");
+    if (!profile) throw new ConvexError("Perfil não encontrado");
 
     const { latitude, longitude } = args;
     if ((latitude === undefined) !== (longitude === undefined)) {
-      throw new Error("Localização incompleta");
+      throw new ConvexError("Localização incompleta");
     }
     if (
       latitude !== undefined &&
@@ -100,14 +104,14 @@ export const updateProfile = mutation({
         Math.abs(latitude) > 90 ||
         Math.abs(longitude) > 180)
     ) {
-      throw new Error("Localização inválida");
+      throw new ConvexError("Localização inválida");
     }
     if (args.avatarUrl && !/^https?:\/\//i.test(args.avatarUrl)) {
-      throw new Error("URL da foto inválida");
+      throw new ConvexError("URL da foto inválida");
     }
     for (const [key, value] of Object.entries(args)) {
       if (typeof value === "string" && value.length > 2000) {
-        throw new Error(`Campo "${key}" muito longo`);
+        throw new ConvexError(`Campo "${key}" muito longo`);
       }
     }
 
