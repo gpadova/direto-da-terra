@@ -35,7 +35,7 @@ export function UserNav() {
           <a href="/auth/login">Entrar</a>
         </Button>
         <Button asChild>
-          <a href="/auth/signup">Registar-se</a>
+          <a href="/auth/signup">Cadastrar-se</a>
         </Button>
       </div>
     );

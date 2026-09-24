@@ -326,7 +326,7 @@ export default function HomePage() {
                 icon: MapPin,
                 title: "Proximidade real",
                 description:
-                  "Conheça quem produz o seu alimento. Fortaleça a economia local e as relações comunitárias.",
+                  "Conheça quem produz seu alimento. Fortaleça a economia local e as relações comunitárias.",
               },
               {
                 icon: Recycle,
@@ -381,7 +381,7 @@ export default function HomePage() {
               <p className="text-muted-foreground leading-relaxed mb-8">
                 Quando você compra de um produtor local, não está apenas economizando
                 — está sustentando famílias, protegendo o meio ambiente e
-                fortalecendo a sua comunidade.
+                fortalecendo sua comunidade.
               </p>
               <Button
                 asChild
@@ -586,7 +586,7 @@ export default function HomePage() {
                 </span>
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
-                Combatendo o desperdício alimentar e conectando comunidades a
+                Combatendo o desperdício de alimentos e conectando comunidades a
                 alimentos frescos e locais.
               </p>
             </div>

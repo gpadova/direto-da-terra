@@ -34,7 +34,7 @@ export default function DashboardPage() {
   if (isLoading || !isAuthenticated) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">A carregar...</div>
+        <div className="animate-pulse text-muted-foreground">Carregando...</div>
       </div>
     );
   }
@@ -42,7 +42,7 @@ export default function DashboardPage() {
   if (profile === undefined) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">A carregar...</div>
+        <div className="animate-pulse text-muted-foreground">Carregando...</div>
       </div>
     );
   }

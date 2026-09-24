@@ -31,7 +31,7 @@ export default function SignUpSuccessPage() {
           </CardHeader>
           <CardContent className="text-center space-y-4">
             <p className="text-sm text-muted-foreground">
-              Por favor, verifique seu e-mail e clique no link de confirmação
+              Verifique seu e-mail e clique no link de confirmação
               para ativar sua conta. Após a confirmação, você poderá fazer login
               e começar a usar o Direto da Terra.
             </p>

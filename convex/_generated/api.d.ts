@@ -14,6 +14,7 @@ import type * as crons from "../crons.js";
 import type * as expiry from "../expiry.js";
 import type * as http from "../http.js";
 import type * as impact from "../impact.js";
+import type * as lib_format from "../lib/format.js";
 import type * as lib_units from "../lib/units.js";
 import type * as orders from "../orders.js";
 import type * as products from "../products.js";
@@ -33,6 +34,7 @@ declare const fullApi: ApiFromModules<{
   expiry: typeof expiry;
   http: typeof http;
   impact: typeof impact;
+  "lib/format": typeof lib_format;
   "lib/units": typeof lib_units;
   orders: typeof orders;
   products: typeof products;

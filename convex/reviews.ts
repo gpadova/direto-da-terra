@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
@@ -10,23 +10,23 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Não autenticado");
+    if (!userId) throw new ConvexError("Você precisa estar logado");
 
     if (!Number.isInteger(args.rating) || args.rating < 1 || args.rating > 5) {
-      throw new Error("Avaliação deve ser entre 1 e 5");
+      throw new ConvexError("Avaliação deve ser entre 1 e 5");
     }
 
     const profile = await ctx.db
       .query("profiles")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
-    if (!profile) throw new Error("Perfil não encontrado");
+    if (!profile) throw new ConvexError("Perfil não encontrado");
 
     const order = await ctx.db.get(args.orderId);
-    if (!order) throw new Error("Pedido não encontrado");
-    if (order.buyerId !== profile._id) throw new Error("Não autorizado");
+    if (!order) throw new ConvexError("Pedido não encontrado");
+    if (order.buyerId !== profile._id) throw new ConvexError("Não autorizado");
     if (order.status !== "completed") {
-      throw new Error("Só é possível avaliar pedidos concluídos");
+      throw new ConvexError("Só é possível avaliar pedidos concluídos");
     }
 
     // Check for existing review
@@ -35,7 +35,7 @@ export const create = mutation({
       .withIndex("by_orderId", (q) => q.eq("orderId", args.orderId))
       .first();
     if (existing) {
-      throw new Error("Este pedido já foi avaliado");
+      throw new ConvexError("Este pedido já foi avaliado");
     }
 
     return await ctx.db.insert("reviews", {
@@ -59,11 +59,13 @@ export const getByOrderId = query({
 });
 
 export const getAverageRating = query({
-  args: { reviewedId: v.id("profiles") },
+  args: { reviewedId: v.string() },
   handler: async (ctx, args) => {
+    const reviewedId = ctx.db.normalizeId("profiles", args.reviewedId);
+    if (!reviewedId) return { average: 0, count: 0 };
     const reviews = await ctx.db
       .query("reviews")
-      .withIndex("by_reviewedId", (q) => q.eq("reviewedId", args.reviewedId))
+      .withIndex("by_reviewedId", (q) => q.eq("reviewedId", reviewedId))
       .collect();
 
     if (reviews.length === 0) return { average: 0, count: 0 };
@@ -94,11 +96,13 @@ export const listByReviewer = query({
 });
 
 export const listByReviewedId = query({
-  args: { reviewedId: v.id("profiles") },
+  args: { reviewedId: v.string() },
   handler: async (ctx, args) => {
+    const reviewedId = ctx.db.normalizeId("profiles", args.reviewedId);
+    if (!reviewedId) return [];
     const reviews = await ctx.db
       .query("reviews")
-      .withIndex("by_reviewedId", (q) => q.eq("reviewedId", args.reviewedId))
+      .withIndex("by_reviewedId", (q) => q.eq("reviewedId", reviewedId))
       .order("desc")
       .take(20);
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { getErrorMessage } from "@/lib/errors";
 import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -55,7 +56,7 @@ export function ReviewDialog({
       onOpenChange(false);
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Erro ao enviar avaliação"
+        getErrorMessage(error, "Erro ao enviar avaliação")
       );
     } finally {
       setIsSubmitting(false);

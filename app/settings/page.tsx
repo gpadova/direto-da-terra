@@ -1,5 +1,6 @@
 "use client";
 
+import { getErrorMessage } from "@/lib/errors";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
@@ -91,7 +92,7 @@ function SettingsContent() {
       });
       toast.success("Perfil atualizado com sucesso");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Erro ao salvar o perfil");
+      setError(getErrorMessage(err, "Erro ao salvar o perfil"));
     } finally {
       setIsSaving(false);
     }
@@ -100,7 +101,7 @@ function SettingsContent() {
   if (profile === undefined) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">A carregar...</div>
+        <div className="animate-pulse text-muted-foreground">Carregando...</div>
       </div>
     );
   }
@@ -193,7 +194,7 @@ function SettingsContent() {
 
                 <div className="space-y-2">
                   <Label htmlFor="bio">
-                    {isSeller ? "Sobre o seu negócio" : "Sobre você"}
+                    {isSeller ? "Sobre seu negócio" : "Sobre você"}
                   </Label>
                   <Textarea
                     id="bio"

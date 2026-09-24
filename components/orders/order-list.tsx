@@ -1,5 +1,6 @@
 "use client";
 
+import { getErrorMessage } from "@/lib/errors";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -7,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Clock, User, Package, Phone, MessageSquare, CalendarClock } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -25,8 +27,10 @@ export function OrderList() {
       await updateStatus({ id: orderId, status: newStatus });
     } catch (error) {
       console.error("Erro ao atualizar status do pedido:", error);
+      toast.error(getErrorMessage(error, "Não foi possível atualizar o status do pedido"));
+    } finally {
+      setUpdatingStatus(null);
     }
-    setUpdatingStatus(null);
   };
 
   const getStatusColor = (status: string) => {

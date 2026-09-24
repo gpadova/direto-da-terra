@@ -1,8 +1,9 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import type { QueryCtx, MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { formatBRL } from "./lib/format";
 import {
   MAX_PICKUP_DAYS_AHEAD,
   PICKUP_WINDOWS,
@@ -175,33 +176,33 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Não autenticado");
+    if (!userId) throw new ConvexError("Você precisa estar logado");
 
     const profile = await ctx.db
       .query("profiles")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
-    if (!profile) throw new Error("Perfil não encontrado");
+    if (!profile) throw new ConvexError("Perfil não encontrado");
 
     if (profile._id === args.sellerId) {
-      throw new Error("Você não pode comprar seus próprios produtos");
+      throw new ConvexError("Você não pode comprar seus próprios produtos");
     }
     if (args.items.length === 0) {
-      throw new Error("O pedido deve conter pelo menos um item");
+      throw new ConvexError("O pedido deve conter pelo menos um item");
     }
     if (args.items.length > 100) {
-      throw new Error("O pedido tem itens demais");
+      throw new ConvexError("O pedido tem itens demais");
     }
     const notes = args.notes?.trim() || undefined;
     if (notes && notes.length > MAX_NOTES_LENGTH) {
-      throw new Error(
+      throw new ConvexError(
         `As observações devem ter no máximo ${MAX_NOTES_LENGTH} caracteres`
       );
     }
 
     const seller = await ctx.db.get(args.sellerId);
     if (!seller || seller.userType === "consumer") {
-      throw new Error("Vendedor não encontrado");
+      throw new ConvexError("Vendedor não encontrado");
     }
 
     const today = todayInBrazil();
@@ -209,19 +210,19 @@ export const create = mutation({
     // Horário de retirada: "yyyy-MM-dd HH:mm-HH:mm" (horário de Brasília).
     const pickup = parsePickupTime(args.pickupTime);
     if (!pickup) {
-      throw new Error("Escolha uma data e um horário de retirada");
+      throw new ConvexError("Escolha uma data e um horário de retirada");
     }
     if (!(PICKUP_WINDOWS as readonly string[]).includes(pickup.window)) {
-      throw new Error("Faixa de horário de retirada inválida");
+      throw new ConvexError("Faixa de horário de retirada inválida");
     }
     if (
       pickup.date < today ||
       (pickup.date === today && pickup.end <= nowTimeInSaoPaulo())
     ) {
-      throw new Error("O horário de retirada escolhido já passou");
+      throw new ConvexError("O horário de retirada escolhido já passou");
     }
     if (pickup.date > addDays(today, MAX_PICKUP_DAYS_AHEAD)) {
-      throw new Error(
+      throw new ConvexError(
         `A retirada deve ser agendada em até ${MAX_PICKUP_DAYS_AHEAD} dias`
       );
     }
@@ -235,7 +236,7 @@ export const create = mutation({
         item.quantity <= 0 ||
         !Number.isInteger(item.quantity)
       ) {
-        throw new Error("Quantidade inválida");
+        throw new ConvexError("Quantidade inválida");
       }
       requested.set(
         item.productId,
@@ -261,20 +262,20 @@ export const create = mutation({
     }[] = [];
     for (const [productId, quantity] of requested) {
       const product = await ctx.db.get(productId);
-      if (!product) throw new Error("Produto não encontrado");
+      if (!product) throw new ConvexError("Produto não encontrado");
       if (product.sellerId !== args.sellerId) {
-        throw new Error(
+        throw new ConvexError(
           `O produto "${product.title}" não pertence a este vendedor`
         );
       }
       if (!product.isAvailable) {
-        throw new Error(`O produto "${product.title}" não está disponível`);
+        throw new ConvexError(`O produto "${product.title}" não está disponível`);
       }
       if (product.expiryDate && product.expiryDate.slice(0, 10) < today) {
-        throw new Error(`O produto "${product.title}" está vencido`);
+        throw new ConvexError(`O produto "${product.title}" está vencido`);
       }
       if (product.expiryDate && pickup.date > product.expiryDate.slice(0, 10)) {
-        throw new Error(
+        throw new ConvexError(
           `A retirada deve ser até a validade de "${product.title}" (${product.expiryDate
             .slice(0, 10)
             .split("-")
@@ -283,14 +284,14 @@ export const create = mutation({
         );
       }
       if (quantity > product.quantity) {
-        throw new Error(
+        throw new ConvexError(
           `Estoque insuficiente para "${product.title}" (disponível: ${product.quantity} ${product.unit})`
         );
       }
       const expected = expectedPrice.get(productId);
       if (expected !== undefined && product.price > expected + 0.005) {
-        throw new Error(
-          `O preço de "${product.title}" mudou para R$${product.price.toFixed(2)}. Atualize o carrinho e tente novamente.`
+        throw new ConvexError(
+          `O preço de "${product.title}" mudou para ${formatBRL(product.price)}. Atualize o carrinho e tente novamente.`
         );
       }
       const unitPrice = product.price;
@@ -343,17 +344,17 @@ export const updateStatus = mutation({
   },
   handler: async (ctx, args) => {
     const profile = await getCurrentProfile(ctx);
-    if (!profile) throw new Error("Não autenticado");
+    if (!profile) throw new ConvexError("Você precisa estar logado");
 
     const order = await ctx.db.get(args.id);
     if (!order || order.sellerId !== profile._id) {
-      throw new Error("Não autorizado");
+      throw new ConvexError("Não autorizado");
     }
 
     if (order.status === args.status) return;
 
     if (!SELLER_TRANSITIONS[order.status].includes(args.status)) {
-      throw new Error("Transição de status inválida");
+      throw new ConvexError("Transição de status inválida");
     }
 
     await ctx.db.patch(args.id, { status: args.status });
@@ -368,14 +369,14 @@ export const cancel = mutation({
   args: { id: v.id("orders") },
   handler: async (ctx, args) => {
     const profile = await getCurrentProfile(ctx);
-    if (!profile) throw new Error("Não autenticado");
+    if (!profile) throw new ConvexError("Você precisa estar logado");
 
     const order = await ctx.db.get(args.id);
     if (!order || order.buyerId !== profile._id) {
-      throw new Error("Não autorizado");
+      throw new ConvexError("Não autorizado");
     }
     if (order.status !== "pending") {
-      throw new Error("Só é possível cancelar pedidos pendentes");
+      throw new ConvexError("Só é possível cancelar pedidos pendentes");
     }
 
     await ctx.db.patch(args.id, { status: "cancelled" });

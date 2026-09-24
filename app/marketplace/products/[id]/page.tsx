@@ -10,13 +10,13 @@ import { ArrowLeft, MapPin, Clock, User, Leaf } from "lucide-react";
 import Link from "next/link";
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { StarRating } from "@/components/reviews/star-rating";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
+import { NotFoundState } from "@/components/not-found-state";
 import type { Id } from "@/convex/_generated/dataModel";
 import { formatExpiryDate, isLastChance } from "@/lib/expiry";
 
 export default function ProductDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const id = params.id as Id<"products">;
 
   const product = useQuery(api.products.getById, { id });
@@ -25,17 +25,38 @@ export default function ProductDetailPage() {
     product?.seller?._id ? { reviewedId: product.seller._id } : "skip"
   );
 
+  const header = (
+    <header className="border-b border-border">
+      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2">
+          <Leaf className="h-8 w-8 text-primary" />
+          <span className="text-2xl font-bold text-primary">Direto da Terra</span>
+        </Link>
+        <UserNav />
+      </div>
+    </header>
+  );
+
   if (product === undefined) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">A carregar...</div>
+        <div className="animate-pulse text-muted-foreground">Carregando...</div>
       </div>
     );
   }
 
   if (!product || !product.isAvailable) {
-    router.push("/marketplace");
-    return null;
+    return (
+      <NotFoundState
+        header={header}
+        title={product ? "Produto indisponível" : "Produto não encontrado"}
+        description={
+          product
+            ? "Este produto não está mais disponível. Confira outras ofertas no mercado."
+            : "Este produto não existe ou foi removido."
+        }
+      />
+    );
   }
 
   const averageRating =

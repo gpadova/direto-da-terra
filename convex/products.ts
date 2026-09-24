@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -38,32 +38,32 @@ function validateProductInput(input: {
   expiryDate?: string;
 }) {
   if (input.title.trim().length === 0) {
-    throw new Error("O título do produto é obrigatório");
+    throw new ConvexError("O título do produto é obrigatório");
   }
   if (!Number.isFinite(input.price) || input.price <= 0) {
-    throw new Error("O preço deve ser maior que zero");
+    throw new ConvexError("O preço deve ser maior que zero");
   }
   if (!Number.isFinite(input.quantity) || input.quantity < 0) {
-    throw new Error("A quantidade não pode ser negativa");
+    throw new ConvexError("A quantidade não pode ser negativa");
   }
   if (!Number.isInteger(input.quantity)) {
-    throw new Error("A quantidade deve ser um número inteiro");
+    throw new ConvexError("A quantidade deve ser um número inteiro");
   }
   if (
     input.expiryDate !== undefined &&
     (!/^\d{4}-\d{2}-\d{2}$/.test(input.expiryDate) ||
       Number.isNaN(Date.parse(`${input.expiryDate}T00:00:00Z`)))
   ) {
-    throw new Error("Data de validade inválida");
+    throw new ConvexError("Data de validade inválida");
   }
   if (input.originalPrice !== undefined && input.originalPrice < input.price) {
-    throw new Error("O preço original não pode ser menor que o preço de venda");
+    throw new ConvexError("O preço original não pode ser menor que o preço de venda");
   }
 }
 
 export const generateUploadUrl = mutation(async (ctx) => {
   const userId = await getAuthUserId(ctx);
-  if (!userId) throw new Error("Não autenticado");
+  if (!userId) throw new ConvexError("Você precisa estar logado");
   return await ctx.storage.generateUploadUrl();
 });
 
@@ -285,9 +285,13 @@ export const listAvailable = query({
 });
 
 export const getById = query({
-  args: { id: v.id("products") },
+  // v.string() (e não v.id) para que ids malformados vindos da URL retornem
+  // null em vez de lançar erro de validação.
+  args: { id: v.string() },
   handler: async (ctx, args) => {
-    const product = await ctx.db.get(args.id);
+    const id = ctx.db.normalizeId("products", args.id);
+    if (!id) return null;
+    const product = await ctx.db.get(id);
     if (!product) return null;
 
     const category = await ctx.db.get(product.categoryId);
@@ -345,21 +349,21 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    if (!userId) throw new ConvexError("Você precisa estar logado");
 
     const profile = await ctx.db
       .query("profiles")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
-    if (!profile) throw new Error("Profile not found");
+    if (!profile) throw new ConvexError("Perfil não encontrado");
     if (profile.userType === "consumer") {
-      throw new Error("Apenas produtores e restaurantes podem cadastrar produtos");
+      throw new ConvexError("Apenas produtores e restaurantes podem cadastrar produtos");
     }
 
     validateProductInput(args);
 
     const category = await ctx.db.get(args.categoryId);
-    if (!category) throw new Error("Categoria não encontrada");
+    if (!category) throw new ConvexError("Categoria não encontrada");
 
     return await ctx.db.insert("products", {
       ...args,
@@ -388,23 +392,23 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    if (!userId) throw new ConvexError("Você precisa estar logado");
 
     const profile = await ctx.db
       .query("profiles")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
-    if (!profile) throw new Error("Profile not found");
+    if (!profile) throw new ConvexError("Perfil não encontrado");
 
     const product = await ctx.db.get(args.id);
     if (!product || product.sellerId !== profile._id) {
-      throw new Error("Unauthorized");
+      throw new ConvexError("Não autorizado");
     }
 
     validateProductInput(args);
 
     const category = await ctx.db.get(args.categoryId);
-    if (!category) throw new Error("Categoria não encontrada");
+    if (!category) throw new ConvexError("Categoria não encontrada");
 
     const { id, ...data } = args;
     // A seller-set price becomes the new base for automatic markdowns
@@ -428,17 +432,17 @@ export const toggleAvailability = mutation({
   args: { id: v.id("products") },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    if (!userId) throw new ConvexError("Você precisa estar logado");
 
     const profile = await ctx.db
       .query("profiles")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
-    if (!profile) throw new Error("Profile not found");
+    if (!profile) throw new ConvexError("Perfil não encontrado");
 
     const product = await ctx.db.get(args.id);
     if (!product || product.sellerId !== profile._id) {
-      throw new Error("Unauthorized");
+      throw new ConvexError("Não autorizado");
     }
 
     await ctx.db.patch(args.id, { isAvailable: !product.isAvailable });
@@ -449,17 +453,17 @@ export const remove = mutation({
   args: { id: v.id("products") },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    if (!userId) throw new ConvexError("Você precisa estar logado");
 
     const profile = await ctx.db
       .query("profiles")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
-    if (!profile) throw new Error("Profile not found");
+    if (!profile) throw new ConvexError("Perfil não encontrado");
 
     const product = await ctx.db.get(args.id);
     if (!product || product.sellerId !== profile._id) {
-      throw new Error("Unauthorized");
+      throw new ConvexError("Não autorizado");
     }
 
     await ctx.db.delete(args.id);
@@ -482,17 +486,17 @@ export const updateQuantity = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Não autenticado");
+    if (!userId) throw new ConvexError("Você precisa estar logado");
 
     const profile = await ctx.db
       .query("profiles")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
-    if (!profile) throw new Error("Perfil não encontrado");
+    if (!profile) throw new ConvexError("Perfil não encontrado");
 
     const product = await ctx.db.get(args.id);
     if (!product || product.sellerId !== profile._id) {
-      throw new Error("Não autorizado");
+      throw new ConvexError("Não autorizado");
     }
 
     if (
@@ -500,7 +504,7 @@ export const updateQuantity = mutation({
       args.quantity < 0 ||
       !Number.isInteger(args.quantity)
     ) {
-      throw new Error("A quantidade deve ser um número inteiro não negativo");
+      throw new ConvexError("A quantidade deve ser um número inteiro não negativo");
     }
 
     await ctx.db.patch(args.id, { quantity: args.quantity });
@@ -510,11 +514,13 @@ export const updateQuantity = mutation({
 // Public listing for a seller's storefront: only available, in-stock,
 // non-expired products.
 export const listPublicBySeller = query({
-  args: { sellerId: v.id("profiles") },
+  args: { sellerId: v.string() },
   handler: async (ctx, args) => {
+    const sellerId = ctx.db.normalizeId("profiles", args.sellerId);
+    if (!sellerId) return [];
     const products = await ctx.db
       .query("products")
-      .withIndex("by_sellerId", (q) => q.eq("sellerId", args.sellerId))
+      .withIndex("by_sellerId", (q) => q.eq("sellerId", sellerId))
       .order("desc")
       .take(LIST_SCAN_LIMIT);
 

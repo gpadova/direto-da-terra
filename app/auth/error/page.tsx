@@ -30,7 +30,7 @@ export default async function AuthErrorPage({
             ) : params?.error ? (
               <p className="text-sm text-muted-foreground">Erro: {params.error}</p>
             ) : (
-              <p className="text-sm text-muted-foreground">Ocorreu um erro de autenticação. Por favor, tente novamente.</p>
+              <p className="text-sm text-muted-foreground">Ocorreu um erro de autenticação. Tente novamente.</p>
             )}
             <div className="pt-4 space-y-2">
               <Button asChild className="w-full">
