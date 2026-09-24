@@ -12,7 +12,7 @@ export const create = mutation({
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Não autenticado");
 
-    if (args.rating < 1 || args.rating > 5) {
+    if (!Number.isInteger(args.rating) || args.rating < 1 || args.rating > 5) {
       throw new Error("Avaliação deve ser entre 1 e 5");
     }
 
@@ -34,8 +34,8 @@ export const create = mutation({
       .query("reviews")
       .withIndex("by_orderId", (q) => q.eq("orderId", args.orderId))
       .first();
-    if (existing && existing.reviewerId === profile._id) {
-      throw new Error("Você já avaliou este pedido");
+    if (existing) {
+      throw new Error("Este pedido já foi avaliado");
     }
 
     return await ctx.db.insert("reviews", {
@@ -43,7 +43,7 @@ export const create = mutation({
       reviewerId: profile._id,
       reviewedId: order.sellerId,
       rating: args.rating,
-      comment: args.comment,
+      comment: args.comment?.trim().slice(0, 2000) || undefined,
     });
   },
 });
@@ -86,11 +86,10 @@ export const listByReviewer = query({
 
     const reviews = await ctx.db
       .query("reviews")
+      .withIndex("by_reviewerId", (q) => q.eq("reviewerId", profile._id))
       .collect();
 
-    return reviews
-      .filter((r) => r.reviewerId === profile._id)
-      .map((r) => r.orderId);
+    return reviews.map((r) => r.orderId);
   },
 });
 

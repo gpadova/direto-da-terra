@@ -12,6 +12,7 @@ import Link from "next/link";
 import { SearchFilters } from "@/components/marketplace/search-filters";
 import { useSearchParams } from "next/navigation";
 import type { Id } from "@/convex/_generated/dataModel";
+import { formatExpiryDate, isLastChance } from "@/lib/expiry";
 
 export default function MarketplacePage() {
   return (
@@ -34,6 +35,15 @@ function MarketplaceContent() {
   const maxPrice = searchParams.get("maxPrice");
   const city = searchParams.get("city") || undefined;
   const sortBy = searchParams.get("sortBy") || undefined;
+  const radius = searchParams.get("radius") || undefined;
+  const latParam = searchParams.get("lat");
+  const lngParam = searchParams.get("lng");
+  const lat = latParam ? parseFloat(latParam) : undefined;
+  const lng = lngParam ? parseFloat(lngParam) : undefined;
+  const hasLocation = lat !== undefined && lng !== undefined && Number.isFinite(lat) && Number.isFinite(lng);
+  const userTypeParam = searchParams.get("userType");
+  const userType =
+    userTypeParam === "producer" || userTypeParam === "restaurant" ? userTypeParam : undefined;
 
   const products = useQuery(api.products.listAvailable, {
     search,
@@ -42,6 +52,10 @@ function MarketplaceContent() {
     maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
     city: city && city !== "all" ? city : undefined,
     sortBy,
+    sellerType: userType,
+    lat: hasLocation ? lat : undefined,
+    lng: hasLocation ? lng : undefined,
+    maxDistanceKm: hasLocation && radius ? parseFloat(radius) : undefined,
   });
 
   const categories = useQuery(api.categories.list);
@@ -54,6 +68,8 @@ function MarketplaceContent() {
     maxPrice: maxPrice || undefined,
     city: city,
     sortBy: sortBy,
+    userType: userType,
+    radius: radius,
   };
 
   return (
@@ -113,6 +129,11 @@ function MarketplaceContent() {
                       {product.category?.icon || "📦"}
                     </div>
                   )}
+                  {isLastChance(product.expiryDate) && (
+                    <Badge variant="destructive" className="absolute top-2 left-2">
+                      Última chance
+                    </Badge>
+                  )}
                   {product.originalPrice && product.originalPrice > product.price && (
                     <Badge className="absolute top-2 right-2 bg-secondary">
                       {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% off
@@ -150,14 +171,25 @@ function MarketplaceContent() {
                       {product.expiryDate && (
                         <div className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          <span>{new Date(product.expiryDate).toLocaleDateString()}</span>
+                          <span>{formatExpiryDate(product.expiryDate)}</span>
                         </div>
                       )}
                     </div>
 
                     <div className="flex items-center gap-1 text-sm text-muted-foreground">
                       <MapPin className="h-3 w-3" />
-                      <span className="line-clamp-1">{product.seller?.city || "Localização não especificada"}</span>
+                      <span className="line-clamp-1">
+                        {product.seller?.city || "Localização não especificada"}
+                        {product.distanceKm != null && (
+                          <span className="ml-1">
+                            · a{" "}
+                            {product.distanceKm < 1
+                              ? "menos de 1"
+                              : product.distanceKm.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}{" "}
+                            km
+                          </span>
+                        )}
+                      </span>
                       <Badge variant="outline" className="ml-auto text-xs">
                         {product.seller?.userType === "producer" ? "🌱 Produtor" : "🍽️ Restaurante"}
                       </Badge>
@@ -190,7 +222,7 @@ function MarketplaceContent() {
                 </div>
                 <h4 className="text-lg font-medium mb-2">Nenhum produto encontrado</h4>
                 <p className="text-muted-foreground">
-                  {search || category || city
+                  {search || category || city || userType || radius
                     ? "Tente ajustar os seus filtros de pesquisa para encontrar mais produtos."
                     : "Volte mais tarde para novas listagens de produtores e restaurantes locais."}
                 </p>

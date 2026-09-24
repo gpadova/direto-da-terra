@@ -15,7 +15,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CartButton } from "@/components/cart/cart-button";
 import { useRouter } from "next/navigation";
-import { LogOut, Settings, UserIcon } from "lucide-react";
+import { LogOut, Package, Settings, UserIcon } from "lucide-react";
 
 export function UserNav() {
   const { isAuthenticated } = useConvexAuth();
@@ -82,8 +82,12 @@ export function UserNav() {
             <span>Painel</span>
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => router.push("/orders")}>
-            <Settings className="mr-2 h-4 w-4" />
+            <Package className="mr-2 h-4 w-4" />
             <span>Meus Pedidos</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push("/settings")}>
+            <Settings className="mr-2 h-4 w-4" />
+            <span>Configurações</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleSignOut}>

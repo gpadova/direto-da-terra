@@ -2,16 +2,11 @@
 
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart3, Package, Euro, TrendingUp, Users, Leaf } from "lucide-react";
 
-interface SellerAnalyticsProps {
-  sellerId: Id<"profiles">;
-}
-
-export function SellerAnalytics({ sellerId }: SellerAnalyticsProps) {
-  const analytics = useQuery(api.orders.getAnalytics, { sellerId });
+export function SellerAnalytics() {
+  const analytics = useQuery(api.orders.getAnalytics);
 
   if (analytics === undefined) {
     return (
@@ -99,8 +94,14 @@ export function SellerAnalytics({ sellerId }: SellerAnalyticsProps) {
             <Leaf className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">{analytics.foodSaved}</div>
-            <p className="text-xs text-muted-foreground">Itens vendidos</p>
+            <div className="text-2xl font-bold text-primary">
+              {analytics.foodSavedKg.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} kg
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {analytics.itemsSaved > 0
+                ? `+ ${analytics.itemsSaved.toLocaleString("pt-BR")} itens em outras unidades`
+                : "Em peso, de pedidos concluídos"}
+            </p>
           </CardContent>
         </Card>
 
@@ -134,7 +135,7 @@ export function SellerAnalytics({ sellerId }: SellerAnalyticsProps) {
                     </div>
                     <div>
                       <p className="font-medium">{product.title}</p>
-                      <p className="text-sm text-muted-foreground">{product.quantitySold} itens vendidos</p>
+                      <p className="text-sm text-muted-foreground">{product.quantitySold} {product.unit} vendidos</p>
                     </div>
                   </div>
                   <div className="text-right">

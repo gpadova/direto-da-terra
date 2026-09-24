@@ -601,6 +601,11 @@ export default function HomePage() {
                   </Link>
                 </li>
                 <li>
+                  <Link href="/impact" className="hover:text-foreground transition-colors">
+                    Nosso impacto
+                  </Link>
+                </li>
+                <li>
                   <Link href="/auth/signup" className="hover:text-foreground transition-colors">
                     Cadastre-se
                   </Link>

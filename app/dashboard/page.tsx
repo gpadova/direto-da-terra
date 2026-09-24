@@ -176,7 +176,7 @@ export default function DashboardPage() {
                   Gerencie pedidos recebidos e atualize seu status
                 </p>
               </div>
-              <OrderList sellerId={profile._id} />
+              <OrderList />
             </TabsContent>
 
             <TabsContent value="analytics" className="space-y-6">
@@ -186,7 +186,7 @@ export default function DashboardPage() {
                   Acompanhe o desempenho das suas vendas e impacto
                 </p>
               </div>
-              <SellerAnalytics sellerId={profile._id} />
+              <SellerAnalytics />
             </TabsContent>
           </Tabs>
         )}

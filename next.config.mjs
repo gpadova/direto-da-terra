@@ -1,10 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
+    dirs: ["app", "components", "hooks", "lib", "convex"],
   },
   images: {
     unoptimized: true,

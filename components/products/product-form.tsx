@@ -18,6 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, ImagePlus, X, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { parseExpiryDate } from "@/lib/expiry";
 import { toast } from "sonner";
 
 interface Category {
@@ -41,6 +42,7 @@ interface ProductFormProps {
     pickupLocation?: string;
     pickupInstructions?: string;
     isAvailable: boolean;
+    autoDiscount?: boolean;
     images?: Id<"_storage">[];
     imageUrls?: string[];
   };
@@ -61,11 +63,12 @@ export function ProductForm({ categories, product, isEditing = false }: ProductF
   const [quantity, setQuantity] = useState(product?.quantity?.toString() || "");
   const [unit, setUnit] = useState(product?.unit || "");
   const [expiryDate, setExpiryDate] = useState<Date | undefined>(
-    product?.expiryDate ? new Date(product.expiryDate) : undefined
+    product?.expiryDate ? parseExpiryDate(product.expiryDate) : undefined
   );
   const [pickupLocation, setPickupLocation] = useState(product?.pickupLocation || "");
   const [pickupInstructions, setPickupInstructions] = useState(product?.pickupInstructions || "");
   const [isAvailable, setIsAvailable] = useState(product?.isAvailable ?? true);
+  const [autoDiscount, setAutoDiscount] = useState(product?.autoDiscount ?? false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -159,6 +162,7 @@ export function ProductForm({ categories, product, isEditing = false }: ProductF
         pickupLocation: pickupLocation || undefined,
         pickupInstructions: pickupInstructions || undefined,
         isAvailable,
+        autoDiscount,
         images: images.length > 0 ? images.map((img) => img.storageId) : undefined,
       };
 
@@ -396,6 +400,17 @@ export function ProductForm({ categories, product, isEditing = false }: ProductF
           <div className="flex items-center space-x-2">
             <Switch id="available" checked={isAvailable} onCheckedChange={setIsAvailable} />
             <Label htmlFor="available">Disponível para compra</Label>
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex items-center space-x-2">
+              <Switch id="autoDiscount" checked={autoDiscount} onCheckedChange={setAutoDiscount} />
+              <Label htmlFor="autoDiscount">Desconto automático perto da validade</Label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              O preço baixa sozinho: 20% de desconto a 3 dias da validade, 30% a 2 dias e 50% na véspera e no dia do vencimento.
+              {!expiryDate && autoDiscount && " Defina uma data de validade para ativar."}
+            </p>
           </div>
 
           {error && (

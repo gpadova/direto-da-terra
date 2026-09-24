@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { useConvexAuth, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
@@ -15,7 +15,8 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Leaf, ArrowLeft, Clock, MapPin, Package, Star, CheckCircle } from "lucide-react";
+import { Leaf, ArrowLeft, Clock, MapPin, Package, Star, CheckCircle, XCircle, CalendarClock } from "lucide-react";
+import { formatPickupLabel } from "@/lib/pickup";
 import Link from "next/link";
 import { ReviewDialog } from "@/components/reviews/review-dialog";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -41,6 +42,24 @@ function OrdersContent() {
   const router = useRouter();
   const [reviewingOrderId, setReviewingOrderId] = useState<Id<"orders"> | null>(null);
   const [reviewingSellerName, setReviewingSellerName] = useState("");
+  const cancelOrder = useMutation(api.orders.cancel);
+  const [cancellingOrderId, setCancellingOrderId] = useState<Id<"orders"> | null>(null);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+
+  const handleCancel = async (orderId: Id<"orders">) => {
+    if (!window.confirm("Tem certeza que deseja cancelar este pedido?")) return;
+    setCancellingOrderId(orderId);
+    setCancelError(null);
+    try {
+      await cancelOrder({ id: orderId });
+    } catch (error: unknown) {
+      setCancelError(
+        error instanceof Error ? error.message : "Não foi possível cancelar o pedido"
+      );
+    } finally {
+      setCancellingOrderId(null);
+    }
+  };
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -117,6 +136,14 @@ function OrdersContent() {
           </Card>
         )}
 
+        {cancelError && (
+          <Card className="mb-6 border-red-200 bg-red-50">
+            <CardContent className="pt-6 text-sm text-red-800">
+              {cancelError}
+            </CardContent>
+          </Card>
+        )}
+
         {orders && orders.length > 0 ? (
           <div className="space-y-6">
             {orders.map((order) => (
@@ -164,9 +191,18 @@ function OrdersContent() {
                     </div>
                   </div>
 
-                  {order.orderItems[0]?.product && (
+                  {(order.pickupTime || order.orderItems[0]?.product) && (
                     <div className="space-y-2">
                       <h4 className="font-medium">Informações de Retirada:</h4>
+                      {order.pickupTime && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <CalendarClock className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">
+                            {formatPickupLabel(order.pickupTime)}
+                          </span>
+                        </div>
+                      )}
+                      {order.orderItems[0]?.product && (
                       <div className="flex items-start gap-2 text-sm">
                         <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground" />
                         <div>
@@ -178,6 +214,7 @@ function OrdersContent() {
                           )}
                         </div>
                       </div>
+                      )}
                     </div>
                   )}
 
@@ -194,6 +231,18 @@ function OrdersContent() {
                       {order.status === "cancelled" &&
                         "Este pedido foi cancelado"}
                     </div>
+                    {order.status === "pending" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600 hover:text-red-700"
+                        disabled={cancellingOrderId === order._id}
+                        onClick={() => handleCancel(order._id)}
+                      >
+                        <XCircle className="mr-1 h-4 w-4" />
+                        {cancellingOrderId === order._id ? "Cancelando..." : "Cancelar Pedido"}
+                      </Button>
+                    )}
                     {order.status === "completed" && reviewedOrderIds && (
                       reviewedOrderIds.includes(order._id) ? (
                         <div className="flex items-center gap-1 text-sm text-muted-foreground">
