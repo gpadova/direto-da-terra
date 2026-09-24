@@ -1,7 +1,7 @@
 export default {
   providers: [
     {
-      domain: "https://notable-roadrunner-511.convex.site",
+      domain: process.env.CONVEX_SITE_URL,
       applicationID: "convex",
     },
   ],
