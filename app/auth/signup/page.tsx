@@ -72,6 +72,13 @@ export default function SignUpPage() {
       return;
     }
 
+    // Convex Auth's Password provider rejects passwords under 8 characters
+    if (password.length < 8) {
+      setError("A senha deve ter pelo menos 8 caracteres");
+      setIsLoading(false);
+      return;
+    }
+
     if (!userType) {
       setError("Por favor, selecione o tipo de conta");
       setIsLoading(false);
@@ -91,7 +98,12 @@ export default function SignUpPage() {
       // once isAuthenticated becomes true
     } catch (error: unknown) {
       pendingProfile.current = null;
-      setError(error instanceof Error ? error.message : "Ocorreu um erro");
+      console.error("Sign up error:", error);
+      // Server error details are hidden in production; the most common
+      // cause is an email that is already registered.
+      setError(
+        "Não foi possível criar a conta. Este email pode já estar registado."
+      );
       setIsLoading(false);
     }
   };
