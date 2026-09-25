@@ -40,18 +40,13 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      const result = await signIn("password", { email, password, flow: "signIn" });
-      console.log("signIn result:", result);
+      await signIn("password", { email, password, flow: "signIn" });
       setSignInComplete(true);
     } catch (err: unknown) {
       console.error("Login error:", err);
-
-      let message = "Email ou senha inválidos";
-      if (err instanceof Error) {
-        message = err.message;
-      } else if (typeof err === "object" && err !== null) {
-        message = JSON.stringify(err);
-      }
+      // Convex Auth throws generic server errors (InvalidAccountId,
+      // InvalidSecret, ...) whose details are hidden in production.
+      const message = "Email ou senha inválidos";
 
       setError(message);
       setIsLoading(false);
