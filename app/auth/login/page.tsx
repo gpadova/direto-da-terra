@@ -16,11 +16,12 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import { getAuthErrorMessage } from "@/lib/auth-errors";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [signInComplete, setSignInComplete] = useState(false);
   const router = useRouter();
@@ -37,18 +38,15 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError(null);
 
     try {
       await signIn("password", { email, password, flow: "signIn" });
       setSignInComplete(true);
     } catch (err: unknown) {
       console.error("Login error:", err);
-      // Convex Auth throws generic server errors (InvalidAccountId,
-      // InvalidSecret, ...) whose details are hidden in production.
-      const message = "Email ou senha inválidos";
-
-      setError(message);
+      toast.error("Não foi possível entrar", {
+        description: getAuthErrorMessage(err, "signIn"),
+      });
       setIsLoading(false);
     }
   };
@@ -95,11 +93,6 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
-              {error && (
-                <div className="p-3 text-sm text-destructive-foreground bg-destructive/10 border border-destructive/20 rounded-md">
-                  {error}
-                </div>
-              )}
               {signInComplete && !isAuthenticated && (
                 <div className="p-3 text-sm text-muted-foreground bg-muted rounded-md text-center">
                   A autenticar...
