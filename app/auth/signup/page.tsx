@@ -24,6 +24,8 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
+import { toast } from "sonner";
+import { getAuthErrorMessage } from "@/lib/auth-errors";
 
 export default function SignUpPage() {
   const [email, setEmail] = useState("");
@@ -31,7 +33,6 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [userType, setUserType] = useState<string>("");
-  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { signIn } = useAuthActions();
@@ -55,7 +56,9 @@ export default function SignUpPage() {
           router.push("/dashboard");
         })
         .catch((err) => {
-          setError(err instanceof Error ? err.message : "Erro ao criar perfil");
+          toast.error("Erro ao criar perfil", {
+            description: err instanceof Error ? err.message : undefined,
+          });
           setIsLoading(false);
         });
     }
@@ -64,23 +67,22 @@ export default function SignUpPage() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError(null);
 
     if (password !== confirmPassword) {
-      setError("As senhas não coincidem");
+      toast.error("As senhas não coincidem");
       setIsLoading(false);
       return;
     }
 
     // Convex Auth's Password provider rejects passwords under 8 characters
     if (password.length < 8) {
-      setError("A senha deve ter pelo menos 8 caracteres");
+      toast.error("A senha deve ter pelo menos 8 caracteres");
       setIsLoading(false);
       return;
     }
 
     if (!userType) {
-      setError("Por favor, selecione o tipo de conta");
+      toast.error("Por favor, selecione o tipo de conta");
       setIsLoading(false);
       return;
     }
@@ -99,11 +101,9 @@ export default function SignUpPage() {
     } catch (error: unknown) {
       pendingProfile.current = null;
       console.error("Sign up error:", error);
-      // Server error details are hidden in production; the most common
-      // cause is an email that is already registered.
-      setError(
-        "Não foi possível criar a conta. Este email pode já estar registado."
-      );
+      toast.error("Não foi possível criar a conta", {
+        description: getAuthErrorMessage(error, "signUp"),
+      });
       setIsLoading(false);
     }
   };
@@ -211,11 +211,6 @@ export default function SignUpPage() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                 />
               </div>
-              {error && (
-                <div className="p-3 text-sm text-destructive-foreground bg-destructive/10 border border-destructive/20 rounded-md">
-                  {error}
-                </div>
-              )}
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Criando conta..." : "Criar conta"}
               </Button>

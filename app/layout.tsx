@@ -4,6 +4,7 @@ import { Inter, Fraunces } from "next/font/google";
 import { GeistMono } from "geist/font/mono";
 import { CartProvider } from "@/hooks/use-cart";
 import { ConvexClientProvider } from "@/components/convex-client-provider";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const inter = Inter({
@@ -34,6 +35,7 @@ export default function RootLayout({
       <body className={`font-sans ${inter.variable} ${fraunces.variable} ${GeistMono.variable}`}>
         <ConvexClientProvider>
           <CartProvider>{children}</CartProvider>
+          <Toaster richColors position="top-center" />
         </ConvexClientProvider>
       </body>
     </html>
